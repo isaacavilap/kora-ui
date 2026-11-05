@@ -1,0 +1,183 @@
+@layer kora.theme, kora.base, kora.utilities;
+
+@import "tailwindcss/theme.css" layer(kora.theme) prefix(kr);
+@import "tailwindcss/utilities.css" layer(kora.utilities) prefix(kr);
+
+@source "../**/*.{ts,tsx}";
+@source not "../**/*.test.tsx";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme inline {
+  --color-bg: var(--kora-bg);
+  --color-surface: var(--kora-surface);
+  --color-surface-2: var(--kora-surface-2);
+  --color-line: var(--kora-line);
+  --color-line-strong: var(--kora-line-strong);
+  --color-fg: var(--kora-fg);
+  --color-muted: var(--kora-muted);
+  --color-accent: var(--kora-accent);
+  --color-accent-hover: var(--kora-accent-hover);
+  --color-accent-fg: var(--kora-accent-fg);
+  --color-accent-soft: var(--kora-accent-soft);
+  --color-success: var(--kora-success);
+  --color-success-soft: var(--kora-success-soft);
+  --color-warning: var(--kora-warning);
+  --color-warning-soft: var(--kora-warning-soft);
+  --color-danger: var(--kora-danger);
+  --color-danger-hover: var(--kora-danger-hover);
+  --color-danger-soft: var(--kora-danger-soft);
+  --color-info: var(--kora-info);
+  --color-info-soft: var(--kora-info-soft);
+  --radius-sm: calc(var(--kora-radius) - 2px);
+  --radius-md: var(--kora-radius);
+  --radius-lg: calc(var(--kora-radius) + 2px);
+  --shadow-overlay: var(--kora-shadow);
+}
+
+@layer kora.base {
+  :root {
+    color-scheme: light;
+    --kora-font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --kora-radius: 6px;
+    --kora-bg: #f4f6f5;
+    --kora-surface: #ffffff;
+    --kora-surface-2: #eef1ef;
+    --kora-line: #dde2df;
+    --kora-line-strong: #a3aeaa;
+    --kora-fg: #171c1a;
+    --kora-muted: #56615c;
+    --kora-accent: #11756b;
+    --kora-accent-hover: #0d5f57;
+    --kora-accent-fg: #ffffff;
+    --kora-accent-soft: #dcefec;
+    --kora-success: #14703f;
+    --kora-success-soft: #dff1e6;
+    --kora-warning: #8f5200;
+    --kora-warning-soft: #f8ecd5;
+    --kora-danger: #bb2d26;
+    --kora-danger-hover: #9c231d;
+    --kora-danger-soft: #fae3e1;
+    --kora-info: #1f62b8;
+    --kora-info-soft: #e0ecfa;
+    --kora-shadow: 0 8px 28px rgb(23 28 26 / 0.16);
+    --kora-chart-1: #2a78d6;
+    --kora-chart-2: #eb6834;
+    --kora-chart-3: #1baf7a;
+    --kora-chart-4: #eda100;
+    --kora-chart-5: #e87ba4;
+    --kora-chart-6: #008300;
+    --kora-control-h: 2.75rem;
+    --kora-gap: 1rem;
+    --kora-cell-y: 0.75rem;
+  }
+
+  .dark {
+    color-scheme: dark;
+    --kora-bg: #111413;
+    --kora-surface: #1a1e1c;
+    --kora-surface-2: #252a28;
+    --kora-line: #2f3532;
+    --kora-line-strong: #65716c;
+    --kora-fg: #e9ecea;
+    --kora-muted: #a2ada8;
+    --kora-accent: #3cc4b1;
+    --kora-accent-hover: #5dd3c2;
+    --kora-accent-fg: #06231f;
+    --kora-accent-soft: #15332f;
+    --kora-success: #4cc38a;
+    --kora-success-soft: #15301f;
+    --kora-warning: #e5a93b;
+    --kora-warning-soft: #33280f;
+    --kora-danger: #f2807a;
+    --kora-danger-hover: #f6a09b;
+    --kora-danger-soft: #3a1b19;
+    --kora-info: #7ab0f2;
+    --kora-info-soft: #16283f;
+    --kora-shadow: 0 8px 28px rgb(0 0 0 / 0.5);
+    --kora-chart-1: #3987e5;
+    --kora-chart-2: #d95926;
+    --kora-chart-3: #199e70;
+    --kora-chart-4: #c98500;
+    --kora-chart-5: #d55181;
+    --kora-chart-6: #008300;
+  }
+
+  /* Pointer-sized on touch screens, denser where a mouse is likely. */
+  @media (min-width: 48rem) {
+    :root {
+      --kora-control-h: 2.25rem;
+      --kora-cell-y: 0.625rem;
+    }
+  }
+
+  [data-density="compact"] {
+    --kora-control-h: 2.5rem;
+    --kora-gap: 0.75rem;
+    --kora-cell-y: 0.5rem;
+  }
+
+  @media (min-width: 48rem) {
+    [data-density="compact"] {
+      --kora-control-h: 2rem;
+      --kora-cell-y: 0.3125rem;
+    }
+  }
+
+  /* Scoped reset: kora-ui never touches elements it did not render. */
+  :where([class*="kr:"]),
+  :where([class*="kr:"])::before,
+  :where([class*="kr:"])::after {
+    box-sizing: border-box;
+    border: 0 solid;
+    margin: 0;
+    padding: 0;
+    font-family: var(--kora-font);
+  }
+
+  :where(button[class*="kr:"], input[class*="kr:"], select[class*="kr:"], textarea[class*="kr:"]) {
+    font: inherit;
+    font-family: var(--kora-font);
+    color: inherit;
+    background: transparent;
+  }
+
+  :where(button[class*="kr:"]) {
+    cursor: pointer;
+    appearance: none;
+  }
+
+  :where(a[class*="kr:"]) {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  :where(ul[class*="kr:"], ol[class*="kr:"]) {
+    list-style: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :where([class*="kr:"]) {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  @keyframes kr-fade-in {
+    from { opacity: 0; }
+  }
+  @keyframes kr-pop-in {
+    from { opacity: 0; transform: translateY(4px) scale(0.98); }
+  }
+  @keyframes kr-slide-left {
+    from { transform: translateX(-100%); }
+  }
+  @keyframes kr-slide-right {
+    from { transform: translateX(100%); }
+  }
+  @keyframes kr-spin {
+    to { transform: rotate(360deg); }
+  }
+  @keyframes kr-pulse {
+    50% { opacity: 0.5; }
+  }
+}

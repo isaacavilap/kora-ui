@@ -1,31 +1,19 @@
 import { defineConfig } from "tsup";
 
-const shared = {
-  format: ["esm", "cjs"] as const,
+export default defineConfig({
+  entry: {
+    index: "src/components/index.ts",
+    table: "src/table/index.ts",
+    charts: "src/charts/index.ts",
+    auth: "src/auth/index.ts",
+    screens: "src/screens/index.ts",
+  },
+  format: ["esm"],
   dts: true,
   sourcemap: true,
-  target: "es2020" as const,
-  treeshake: true,
-  external: [
-    "react",
-    "react-dom",
-    "react/jsx-runtime",
-    /^react-icons/,
-  ],
-};
-
-export default defineConfig([
-  {
-    ...shared,
-    entry: ["src/index.ts"],
-    clean: true,
-  },
-  {
-    ...shared,
-    entry: ["src/client.ts"],
-    clean: false,
-    banner: {
-      js: '"use client";',
-    },
-  },
-]);
+  target: "es2020",
+  treeshake: false,
+  splitting: true,
+  clean: true,
+  banner: { js: '"use client";' },
+});

@@ -1,6 +1,6 @@
 # kora-ui v1: librería para construir dashboards
 
-Fecha: 2026-11-05. Estado: pendiente de revisión.
+Fecha: 2026-11-05. Estado: aprobado e implementado en la rama `v1`.
 
 ## Objetivo
 
@@ -34,7 +34,7 @@ packages/kora-ui/src/
   auth/         entrada "kora-ui/auth"      pantallas de acceso
   screens/      entrada "kora-ui/screens"   errores, cuenta, equipo, onboarding
   styles/       tokens y "kora-ui/styles.css"
-apps/docs/      documentación Next.js y dashboard demo
+apps/docs/      documentación Next.js, secciones Components y Templates
 ```
 
 Dirección de dependencias: `components` no importa a nadie. `table` y `charts` importan `components`. `auth` importa `components`. `screens` importa `components` y `table`.
@@ -130,6 +130,10 @@ Incluye selección de filas, acciones masivas y estados `loading`, `empty` y `er
 ```
 
 Los gráficos toman el color de `--kora-chart-*`, se adaptan al contenedor y funcionan en claro y oscuro. `summary` es obligatorio y actúa como descripción accesible.
+
+## Responsive
+
+Todo funciona en móvil y escritorio sin props adicionales: sidebar como drawer bajo 1024px, filas de `DataTable` como tarjetas bajo 768px, diálogos anclados abajo en teléfonos, controles de tamaño táctil y texto de 16px en inputs móviles. Se verifica a 320, 390, 768 y 1440px.
 
 ## Calidad y pruebas
 

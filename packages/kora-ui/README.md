@@ -1,149 +1,42 @@
 # kora-ui
 
-A React UI component library styled with **Tailwind CSS**. TypeScript-first, tree-shakable, and framework-agnostic (works in Next.js, Vite, Remix, CRA, etc.).
-
-[![npm](https://img.shields.io/npm/v/kora-ui.svg)](https://www.npmjs.com/package/kora-ui)
-[![npm downloads](https://img.shields.io/npm/dm/kora-ui.svg)](https://www.npmjs.com/package/kora-ui)
-[![license](https://img.shields.io/npm/l/kora-ui.svg)](./LICENSE)
+React components for building admin and analytics dashboards: layout, data tables, charts, and ready-made sign-in, settings, and error screens. Everything works on phones and desktops, in light and dark.
 
 Live docs: **[kora-ui.istmocode.com](https://kora-ui.istmocode.com)**
 
 ## Install
 
 ```bash
-npm install kora-ui
-# or
-pnpm add kora-ui
-# or
-yarn add kora-ui
+npm install kora-ui@next
 ```
-
-`react` and `react-dom` are peer dependencies (React 18+).
-
-## Setup
-
-In your `tailwind.config.{js,ts}`, add kora-ui to `content`:
 
 ```ts
-// tailwind.config.ts
-import type { Config } from "tailwindcss";
-
-export default {
-  content: [
-    "./src/**/*.{js,ts,jsx,tsx}",
-    "./node_modules/kora-ui/dist/**/*.{js,mjs,cjs}",
-  ],
-} satisfies Config;
+import "kora-ui/styles.css";
 ```
 
-Import the themes stylesheet to unlock six swappable themes (default, vintage,
-futuristic, electric, oceanic, botanical). Activate one with a single attribute:
-
-```css
-/* app/globals.css */
-@import "tailwindcss";
-@import "kora-ui/styles/themes.css";
-```
-
-```html
-<html data-theme="vintage">
-```
-
-`default` follows the user's system light/dark preference; the other five ship
-fixed palettes and Google Fonts loaded on demand.
+React 18 or 19 is required. Tailwind is not. If your project uses Tailwind, see the layer setup in the docs.
 
 ## Usage
 
 ```tsx
-import { Button, Card, CardHeader, CardTitle, CardContent } from "kora-ui";
-
-export default function Example() {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Deploy to production</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Button variant="primary">Deploy</Button>
-      </CardContent>
-    </Card>
-  );
-}
+import { Grid, KpiCard } from "kora-ui";
+import { DataTable } from "kora-ui/table";
+import { LineChart } from "kora-ui/charts";
+import { LoginScreen } from "kora-ui/auth";
+import { AccountScreen, ErrorScreen, MembersScreen, OnboardingWizard } from "kora-ui/screens";
 ```
 
-## Components
-
-| Component | Import |
-| --- | --- |
-| Alert | `Alert`, `AlertTitle`, `AlertDescription` |
-| Avatar | `Avatar`, `AvatarImage`, `AvatarFallback` |
-| Badge | `Badge` |
-| Button | `Button` |
-| Card | `Card`, `CardHeader`, `CardTitle`, `CardDescription`, `CardContent`, `CardFooter` |
-| Checkbox | `Checkbox` |
-| Input | `Input` |
-| Label | `Label` |
-| Separator | `Separator` |
-| Textarea | `Textarea` |
-| WhatsApp float | `WhatsAppFloat` (from `kora-ui/client`) |
-
-### `WhatsAppFloat`
-
-Floating contact button that opens a WhatsApp chat. Pass a single `contact`
-for direct chat, or an array of `contacts` — the button shows a menu for the
-visitor to pick one (ideal for a business with several branches).
+Screens draw the interface and validate format. Your functions handle the backend:
 
 ```tsx
-import { WhatsAppFloat } from "kora-ui/client";
-
-// Single contact
-<WhatsAppFloat
-  contact={{
-    name: "Ventas",
-    phone: "+52 55 1234 5678",
-    message: "Hola, me interesa un producto",
-  }}
-/>
-
-// Multiple contacts → pops a menu
-<WhatsAppFloat
-  menuTitle="Elige una sucursal"
-  contacts={[
-    { name: "Centro",  phone: "+52 55 1111 1111", label: "Av. Reforma 100" },
-    { name: "Polanco", phone: "+52 55 2222 2222", label: "Masaryk 200" },
-  ]}
+<LoginScreen
+  onSubmit={({ email, password }) => signIn(email, password)}
+  links={{ forgotPassword: "/forgot-password", register: "/register" }}
 />
 ```
 
-## Themes
-
-Six complete design systems in one stylesheet. Each theme carries its own
-semantic tokens, typography, radius and shadow scales; the five opinionated
-ones also override the full 22-hue × 11-shade Tailwind palette.
-
-| Theme       | Vibe                                     |
-| ----------- | ---------------------------------------- |
-| default     | Tailwind stock, follows OS light/dark    |
-| vintage     | Warm, nostalgic, editorial serif         |
-| futuristic  | Cyberpunk neon on deep blue-violet black |
-| electric    | Modern dopamine on clean whites          |
-| oceanic     | Calm teal for wellness & climate-tech    |
-| botanical   | Earthy greens, organic & grounded        |
-
-```tsx
-<button className="bg-blue-500 text-blue-50 hover:bg-blue-600">
-  Deploy
-</button>
-```
-
-Same utility, different look per theme. Preview every theme at
-[kora-ui.istmocode.com/docs/themes](https://kora-ui.istmocode.com/docs/themes).
-
-## Docs
-
-Full documentation, previews, and prop tables at
-**[kora-ui.istmocode.com](https://kora-ui.istmocode.com)**.
+Sessions, tokens, permissions, and real validation stay in your backend.
 
 ## License
 
-[MIT](./LICENSE) © Isaac Avila
+MIT

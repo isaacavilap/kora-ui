@@ -1,105 +1,60 @@
 # kora-ui
 
-A React UI component library styled with **Tailwind CSS**. TypeScript-first, tree-shakable, and framework-agnostic (works in Next.js, Vite, Remix, CRA, etc.).
-
-[![npm](https://img.shields.io/npm/v/kora-ui.svg)](https://www.npmjs.com/package/kora-ui)
-[![npm downloads](https://img.shields.io/npm/dm/kora-ui.svg)](https://www.npmjs.com/package/kora-ui)
-[![license](https://img.shields.io/npm/l/kora-ui.svg)](./packages/kora-ui/LICENSE)
+React components for building admin and analytics dashboards: layout, data tables, charts, and ready-made sign-in, settings, and error screens. Everything works on phones and desktops, in light and dark.
 
 Live docs: **[kora-ui.istmocode.com](https://kora-ui.istmocode.com)**
 
 ## Install
 
 ```bash
-npm install kora-ui
-# or
-pnpm add kora-ui
-# or
-yarn add kora-ui
+npm install kora-ui@next
 ```
-
-`react` and `react-dom` are peer dependencies (React 18+).
-
-## Setup
-
-In your `tailwind.config.{js,ts}`, add kora-ui to `content` so its classes are
-picked up:
 
 ```ts
-// tailwind.config.ts
-import type { Config } from "tailwindcss";
-
-export default {
-  content: [
-    "./src/**/*.{js,ts,jsx,tsx}",
-    "./node_modules/kora-ui/dist/**/*.{js,mjs,cjs}",
-  ],
-} satisfies Config;
+import "kora-ui/styles.css";
 ```
 
-To enable the electric palette, import its stylesheet once at your app's CSS
-entry:
-
-```css
-/* app/globals.css */
-@import "tailwindcss";
-@import "kora-ui/styles/electric.css";
-```
+React 18 or 19 is required. Tailwind is not. If your project uses Tailwind, see the layer setup in the docs.
 
 ## Usage
 
 ```tsx
-import { Button, Card, CardHeader, CardTitle, CardContent } from "kora-ui";
-
-export default function Example() {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Deploy to production</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Button variant="primary">Deploy</Button>
-      </CardContent>
-    </Card>
-  );
-}
+import { Grid, KpiCard } from "kora-ui";
+import { DataTable } from "kora-ui/table";
+import { LineChart } from "kora-ui/charts";
+import { LoginScreen } from "kora-ui/auth";
+import { AccountScreen, ErrorScreen, MembersScreen, OnboardingWizard } from "kora-ui/screens";
 ```
 
-## Components
-
-| Component | Import |
-| --- | --- |
-| Alert | `Alert`, `AlertTitle`, `AlertDescription` |
-| Avatar | `Avatar`, `AvatarImage`, `AvatarFallback` |
-| Badge | `Badge` |
-| Button | `Button` |
-| Card | `Card`, `CardHeader`, `CardTitle`, `CardDescription`, `CardContent`, `CardFooter` |
-| Checkbox | `Checkbox` |
-| Input | `Input` |
-| Label | `Label` |
-| Separator | `Separator` |
-| Textarea | `Textarea` |
-| WhatsApp float | `WhatsAppFloat` from `kora-ui/client` (floating contact button; multi-branch menu) |
-
-## Electric palette
-
-Every Tailwind hue, pushed to 100% saturation. Works in light and dark.
-17 hues × 11 shades = 187 CSS custom properties + Tailwind utility classes
-(`bg-electric-blue-500`, `text-electric-fuchsia-600`, etc.).
+Screens draw the interface and validate format. Your functions handle the backend:
 
 ```tsx
-<button className="bg-electric-blue-500 text-electric-blue-50 hover:bg-electric-blue-600">
-  Deploy
-</button>
+<LoginScreen
+  onSubmit={({ email, password }) => signIn(email, password)}
+  links={{ forgotPassword: "/forgot-password", register: "/register" }}
+/>
 ```
 
-Preview every shade on the [palette page](https://kora-ui.istmocode.com/docs/palette).
+Sessions, tokens, permissions, and real validation stay in your backend.
 
-## Docs
+## Repository
 
-Full documentation, previews, and prop tables at
-**[kora-ui.istmocode.com](https://kora-ui.istmocode.com)**.
+| Path | Contents |
+|---|---|
+| `packages/kora-ui` | The npm package |
+| `apps/docs` | Docs site, with the Components and Templates sections |
+
+```bash
+npm install
+npm run build:lib
+npm run dev:docs        # Docs at localhost:3000
+npm test -w kora-ui
+```
+
+After changing the library, run `npm run build:lib` so that the docs pick it up, or keep `npm run dev:lib` running.
+
+The design spec is in `docs/superpowers/specs/2026-11-05-kora-ui-v1-design.md`.
 
 ## License
 
-[MIT](./packages/kora-ui/LICENSE) © Isaac Avila
+MIT
