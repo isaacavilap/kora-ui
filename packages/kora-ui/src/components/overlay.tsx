@@ -2,8 +2,9 @@ import type { ComponentProps, ReactNode } from "react";
 import { Dialog as D, DropdownMenu as M, Tooltip as T } from "radix-ui";
 import { X } from "lucide-react";
 import { Toaster as SonnerToaster, toast } from "sonner";
+import { Alert } from "./display";
 import { Button } from "./button";
-import { cn, useLabels } from "./provider";
+import { cn, useLabels, useSubmit } from "./provider";
 
 export { toast };
 
@@ -165,6 +166,7 @@ export function Toaster(props: ComponentProps<typeof SonnerToaster>) {
   return (
     <SonnerToaster
       position="bottom-right"
+      mobileOffset={{ bottom: "calc(var(--kora-bottom-nav, 0px) + 1rem)" }}
       style={
         {
           "--normal-bg": "var(--kora-surface)",
@@ -175,5 +177,40 @@ export function Toaster(props: ComponentProps<typeof SonnerToaster>) {
       }
       {...props}
     />
+  );
+}
+
+/** Replaces `window.confirm`. It stays open and shows a message if `onConfirm` rejects. */
+export function ConfirmDialog({ open, onOpenChange, title, description, confirmLabel, cancelLabel, danger, onConfirm }: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: string;
+  description?: ReactNode;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  /** Styles the button for actions that remove or undo something. */
+  danger?: boolean;
+  onConfirm: () => unknown;
+}) {
+  const t = useLabels();
+  const { pending, error, run } = useSubmit(onConfirm, t.genericError);
+  return (
+    <Dialog open={open} onOpenChange={(next) => !pending && onOpenChange(next)}>
+      <DialogContent title={title} description={description}>
+        {error && <Alert tone="danger" className="kr:mb-3">{error}</Alert>}
+        <div className="kr:flex kr:flex-col-reverse kr:gap-2 kr:md:flex-row kr:md:justify-end">
+          <Button variant="secondary" disabled={pending} onClick={() => onOpenChange(false)}>{cancelLabel ?? t.cancel}</Button>
+          <Button
+            variant={danger ? "danger" : "primary"}
+            loading={pending}
+            onClick={async () => {
+              if (await run()) onOpenChange(false);
+            }}
+          >
+            {confirmLabel ?? t.confirm}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

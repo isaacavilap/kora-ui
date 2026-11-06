@@ -154,7 +154,7 @@ export function DateRangePicker({ value, onChange, presets, placeholder, disable
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
       <Popover.Trigger asChild>
-        <Button {...field} variant="secondary" aria-label={ariaLabel} disabled={disabled} className={cn("kr:justify-start kr:px-3 kr:font-normal", !value?.from && "kr:text-muted", className)}>
+        <Button {...field} variant="secondary" aria-label={ariaLabel && `${ariaLabel}: ${text}`} disabled={disabled} className={cn("kr:justify-start kr:px-3 kr:font-normal", !value?.from && "kr:text-muted", className)}>
           <Calendar aria-hidden className="kr:text-muted" />
           <span className="kr:truncate">{text}</span>
         </Button>

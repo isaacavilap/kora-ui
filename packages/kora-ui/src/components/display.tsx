@@ -1,4 +1,4 @@
-import { forwardRef } from "react";
+import { Fragment, forwardRef } from "react";
 import type { HTMLAttributes, ReactNode } from "react";
 import { Avatar as RadixAvatar, Separator as RadixSeparator } from "radix-ui";
 import { AlertTriangle, CheckCircle2, Info, XCircle } from "lucide-react";
@@ -44,7 +44,7 @@ export function CardHeader({ className, title, description, actions, children, .
     <div className={cn("kr:flex kr:flex-wrap kr:items-start kr:justify-between kr:gap-x-4 kr:gap-y-2 kr:p-4 kr:pb-0", className)} {...props}>
       {(title || description) && (
         <div className="kr:min-w-0">
-          {title && <h3 className="kr:text-sm kr:font-semibold kr:text-fg">{title}</h3>}
+          {title && <h2 className="kr:text-sm kr:font-semibold kr:text-fg">{title}</h2>}
           {description && <p className="kr:mt-0.5 kr:text-[0.8125rem] kr:text-muted">{description}</p>}
         </div>
       )}
@@ -130,3 +130,45 @@ export function EmptyState({ icon, title, description, action, className }: {
     </div>
   );
 }
+
+/** Label and value pairs, such as a record summary. */
+export function DescriptionList({ items, className }: { items: Array<{ label: ReactNode; value: ReactNode }>; className?: string }) {
+  return (
+    <dl className={cn("kr:grid kr:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] kr:gap-x-4 kr:gap-y-2.5 kr:text-sm", className)}>
+      {items.map((item, i) => (
+        <Fragment key={i}>
+          <dt className="kr:text-muted">{item.label}</dt>
+          <dd className="kr:min-w-0 kr:text-fg kr:[overflow-wrap:anywhere]">{item.value}</dd>
+        </Fragment>
+      ))}
+    </dl>
+  );
+}
+
+export type TimelineEvent = { id: string; title: ReactNode; description?: ReactNode; time?: ReactNode; tone?: Tone };
+
+const timelineDot: Partial<Record<Tone, string>> = {
+  success: "kr:bg-success",
+  warning: "kr:bg-warning",
+  danger: "kr:bg-danger",
+};
+
+/** Events in the order you pass them. */
+export function Timeline({ events, className }: { events: TimelineEvent[]; className?: string }) {
+  return (
+    <ol className={cn("kr:text-sm", className)}>
+      {events.map((event, i) => (
+        <li key={event.id} className="kr:relative kr:flex kr:gap-3 kr:pb-4 kr:last:pb-0">
+          {i < events.length - 1 && <span aria-hidden className="kr:absolute kr:top-4 kr:bottom-0 kr:left-[0.3125rem] kr:w-px kr:bg-line" />}
+          <span aria-hidden className={cn("kr:mt-1 kr:size-2.5 kr:shrink-0 kr:rounded-full", (event.tone && timelineDot[event.tone]) ?? "kr:bg-line-strong")} />
+          <div className="kr:min-w-0 kr:flex-1">
+            <p className="kr:font-medium kr:text-fg">{event.title}</p>
+            {event.description && <p className="kr:text-[0.8125rem] kr:text-muted">{event.description}</p>}
+            {event.time && <p className="kr:mt-0.5 kr:text-xs kr:text-muted">{event.time}</p>}
+          </div>
+        </li>
+      ))}
+    </ol>
+  );
+}
+

@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { AppShell, Sidebar, SidebarGroup, SidebarItem, SidebarSection, Topbar } from "./layout";
+import { AppShell, BottomNav, SaveBar, Sidebar, SidebarGroup, SidebarItem, SidebarSection, Topbar } from "./layout";
 import { CommandPalette, filterCommands } from "./shell-tools";
 
 const shell = (active = false, props = {}) => (
@@ -93,5 +93,27 @@ describe("CommandPalette", () => {
     await userEvent.keyboard("{ArrowDown}{Enter}");
     expect(items[1]!.onSelect).toHaveBeenCalled();
     expect(dialog).not.toBeInTheDocument();
+  });
+});
+
+describe("BottomNav", () => {
+  it("marks the current page, and opens the sidebar for the rest", async () => {
+    render(shell(false, { bottomNav: <BottomNav items={[{ href: "/home", label: "Inicio", icon: null, active: true }]} /> }));
+    const nav = screen.getByRole("navigation", { name: "Main" });
+    expect(nav.querySelector("[aria-current=page]")?.textContent).toContain("Inicio");
+    await userEvent.click(screen.getByRole("button", { name: "More" }));
+    expect(screen.getByRole("dialog")).toBeTruthy();
+  });
+});
+
+describe("SaveBar", () => {
+  it("shows only with unsaved changes", async () => {
+    const onDiscard = vi.fn();
+    const { rerender } = render(<SaveBar dirty={false} onDiscard={onDiscard} />);
+    expect(screen.queryByRole("button", { name: "Discard" })).toBeNull();
+    rerender(<SaveBar dirty onDiscard={onDiscard} />);
+    await userEvent.click(screen.getByRole("button", { name: "Discard" }));
+    expect(onDiscard).toHaveBeenCalledOnce();
+    expect(screen.getByRole("button", { name: "Save changes" }).getAttribute("type")).toBe("submit");
   });
 });

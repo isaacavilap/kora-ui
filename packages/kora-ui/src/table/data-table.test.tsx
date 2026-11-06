@@ -2,7 +2,7 @@ import { useState } from "react";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { DataTable, matchesFilter, type DataTableColumn, type DataTableState } from "./data-table";
+import { DataTable, matchesFilter, toCsv, type DataTableColumn, type DataTableState } from "./data-table";
 
 type Row = { id: string; name: string; total: number };
 const data: Row[] = Array.from({ length: 12 }, (_, i) => ({ id: String(i + 1), name: `Order ${String(i + 1).padStart(2, "0")}`, total: 100 - i }));
@@ -164,5 +164,67 @@ describe("DataTable toolbar", () => {
     expect(within(screen.getByRole("table", { hidden: true })).queryByText("failed")).toBeNull();
     await userEvent.click(screen.getByRole("checkbox", { name: "Name" }));
     expect(within(screen.getByRole("table", { hidden: true })).getByText("Ana")).toBeInTheDocument();
+  });
+});
+
+describe("toCsv", () => {
+  it("quotes separators and neutralizes formulas from user text", () => {
+    expect(toCsv(["a", "b"], [['x,"y"', "=HYPERLINK(1)"], [-5, null]])).toBe('a,b\r\n"x,""y""",\'=HYPERLINK(1)\r\n-5,');
+    expect(toCsv(["a"], [["@cmd"], ["+1"]])).toBe("a\r\n'@cmd\r\n'+1");
+  });
+});
+
+describe("DataTable row extras", () => {
+  type Line = { id: string; name: string; total: number };
+  const lines: Line[] = [{ id: "1", name: "Ana", total: 10 }, { id: "2", name: "Ben", total: 5 }];
+  const lineColumns: DataTableColumn<Line>[] = [
+    { id: "name", header: "Name", accessor: "name" },
+    { id: "total", header: "Total", accessor: "total", align: "right", footer: (rows) => rows.reduce((sum, r) => sum + r.total, 0) },
+  ];
+
+  it("adds up the footer, and expands one row without triggering row clicks", async () => {
+    const onRowClick = vi.fn();
+    render(<DataTable columns={lineColumns} data={lines} getRowId={(r) => r.id} onRowClick={onRowClick} renderExpanded={(r) => <p>More about {r.name}</p>} />);
+    const table = within(screen.getByRole("table"));
+    expect(within(table.getAllByRole("rowgroup")[2]!).getByText("15")).toBeInTheDocument();
+    await userEvent.click(table.getAllByRole("button", { name: "Show details" })[0]!);
+    expect(table.getByText("More about Ana")).toBeInTheDocument();
+    expect(table.queryByText("More about Ben")).toBeNull();
+    expect(onRowClick).not.toHaveBeenCalled();
+  });
+
+  it("reports filters when the parent controls them", async () => {
+    const onFiltersChange = vi.fn();
+    const columnsWithFilter: DataTableColumn<Line>[] = [{ ...lineColumns[0]!, filter: { type: "select" } }, lineColumns[1]!];
+    render(<DataTable columns={columnsWithFilter} data={lines} getRowId={(r) => r.id} filters={{ name: ["Ben"] }} onFiltersChange={onFiltersChange} />);
+    expect(within(screen.getByRole("table")).queryByText("Ana")).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Clear filters" }));
+    expect(onFiltersChange).toHaveBeenCalledWith({});
+    expect(within(screen.getByRole("table")).queryByText("Ana")).toBeNull();
+  });
+});
+
+
+describe("DataTable row click", () => {
+  it("opens the row, but not when a link or button inside it is used", async () => {
+    const onRowClick = vi.fn();
+    const linked: DataTableColumn<Row>[] = [
+      { id: "name", header: "Name", accessor: "name" },
+      { id: "link", header: "Link", cell: (r) => <a href="#x" onClick={(e) => e.preventDefault()}>Open {r.id}</a> },
+    ];
+    render(<DataTable columns={linked} data={data.slice(0, 1)} getRowId={(r) => r.id} onRowClick={onRowClick} mobile="scroll" />);
+    await userEvent.click(screen.getByRole("link", { name: "Open 1" }));
+    expect(onRowClick).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole("cell", { name: "Order 01" }));
+    expect(onRowClick).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps a sort after the third click on a header", async () => {
+    render(<DataTable columns={columns} data={data} getRowId={(r) => r.id} pageSize={5} mobile="scroll" />);
+    const header = within(screen.getByRole("table")).getByRole("button", { name: /Total/ });
+    await userEvent.click(header);
+    await userEvent.click(header);
+    await userEvent.click(header);
+    expect(screen.getByRole("columnheader", { name: /Total/ }).getAttribute("aria-sort")).not.toBe("none");
   });
 });

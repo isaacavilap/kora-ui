@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useId, useMemo, useState } from "react";
 import type { CSSProperties, HTMLAttributes, ReactNode } from "react";
 import { Dialog as D, Popover } from "radix-ui";
-import { ChevronRight, Menu, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { ChevronLeft, ChevronRight, Menu, MoreHorizontal, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { Button, focusRing, popoverClass } from "./button";
 import { Badge } from "./display";
 import { Tooltip } from "./overlay";
@@ -27,7 +27,9 @@ export function useSidebar() {
  * Page frame. From 1024px the sidebar is a fixed column that collapses to icons or hides.
  * Below that it becomes a drawer, opened with the Topbar menu button.
  */
-export function AppShell({ sidebar, topbar, collapseMode = "rail", collapsed: controlled, defaultCollapsed = false, onCollapsedChange, children, className }: {
+export function AppShell({ sidebar, topbar, bottomNav, collapseMode = "rail", collapsed: controlled, defaultCollapsed = false, onCollapsedChange, children, className }: {
+  /** Usually a BottomNav. Shown below 1024px. */
+  bottomNav?: ReactNode;
   sidebar?: ReactNode;
   topbar?: ReactNode;
   /** `rail` keeps a column of icons when collapsed. `hidden` removes the sidebar. */
@@ -67,7 +69,7 @@ export function AppShell({ sidebar, topbar, collapseMode = "rail", collapsed: co
   const rail = collapsed && collapseMode === "rail";
   return (
     <ShellContext.Provider value={{ openDrawer: () => setDrawer(true), closeDrawer: () => setDrawer(false), toggleCollapsed, collapsed, hasSidebar: Boolean(sidebar) }}>
-      <div className={cn("kr:flex kr:min-h-dvh kr:bg-bg kr:text-fg", className)}>
+      <div className={cn("kr:flex kr:min-h-dvh kr:bg-bg kr:text-fg", Boolean(bottomNav) && "kr:[--kora-bottom-nav:calc(3.5rem+env(safe-area-inset-bottom))] kr:lg:[--kora-bottom-nav:0px]", className)}>
         {sidebar && (
           <>
             <aside
@@ -95,8 +97,9 @@ export function AppShell({ sidebar, topbar, collapseMode = "rail", collapsed: co
         )}
         <div className="kr:flex kr:min-w-0 kr:flex-1 kr:flex-col">
           {topbar}
-          <main className="kr:min-w-0 kr:flex-1 kr:p-4 kr:lg:p-6">{children}</main>
+          <main className={cn("kr:min-w-0 kr:flex-1 kr:p-4 kr:lg:p-6", Boolean(bottomNav) && "kr:pb-[calc(1rem+var(--kora-bottom-nav))] kr:lg:pb-6")}>{children}</main>
         </div>
+        {bottomNav}
       </div>
     </ShellContext.Provider>
   );
@@ -105,8 +108,10 @@ export function AppShell({ sidebar, topbar, collapseMode = "rail", collapsed: co
 const initial = (text: unknown) => (typeof text === "string" && text ? text[0]!.toUpperCase() : "•");
 
 /** In the icon rail `footer` gets only 56px. SidebarUser adapts by itself. For other content, use `useSidebar`. */
-export function Sidebar({ brand, footer, children, className }: {
+export function Sidebar({ brand, scope, footer, children, className }: {
   brand?: { name: string; logo?: ReactNode };
+  /** Shown under the brand. Usually a ScopeSwitcher. */
+  scope?: ReactNode;
   footer?: ReactNode;
   children: ReactNode;
   className?: string;
@@ -122,6 +127,7 @@ export function Sidebar({ brand, footer, children, className }: {
           <span className={rail ? "kr:sr-only" : "kr:truncate"}>{b.name}</span>
         </div>
       )}
+      {scope && <div className="kr:shrink-0 kr:px-2 kr:pb-1">{scope}</div>}
       <nav className="kr:min-h-0 kr:flex-1 kr:space-y-5 kr:overflow-x-hidden kr:overflow-y-auto kr:px-2 kr:py-2">{children}</nav>
       {footer && <div className="kr:shrink-0 kr:overflow-hidden kr:border-t kr:border-line kr:p-2">{footer}</div>}
     </div>
@@ -311,17 +317,29 @@ export function Topbar({ children, className }: { children?: ReactNode; classNam
   );
 }
 
-/** Title block. Actions move below the title on phones. */
-export function PageHeader({ title, description, actions, className }: {
+/** Title block. Actions move below the title on phones. `back` links to the list a record belongs to. */
+export function PageHeader({ title, description, actions, back, status, className }: {
   title: ReactNode;
   description?: ReactNode;
   actions?: ReactNode;
+  back?: { href: string; label: string };
+  /** Badges next to the title. */
+  status?: ReactNode;
   className?: string;
 }) {
   return (
     <div className={cn("kr:mb-5 kr:flex kr:flex-col kr:gap-3 kr:md:flex-row kr:md:items-start kr:md:justify-between", className)}>
       <div className="kr:min-w-0">
-        <h1 className="kr:text-xl kr:font-semibold kr:text-fg">{title}</h1>
+        {back && (
+          <KoraLink href={back.href} className={cn("kr:mb-1 kr:inline-flex kr:min-h-6 kr:items-center kr:gap-1 kr:text-sm kr:text-muted kr:hover:text-fg", focusRing)}>
+            <ChevronLeft aria-hidden className="kr:size-4" />
+            {back.label}
+          </KoraLink>
+        )}
+        <div className="kr:flex kr:flex-wrap kr:items-center kr:gap-2">
+          <h1 className="kr:text-xl kr:font-semibold kr:text-fg">{title}</h1>
+          {status}
+        </div>
         {description && <p className="kr:mt-1 kr:text-sm kr:text-muted">{description}</p>}
       </div>
       {actions && <div className="kr:flex kr:flex-wrap kr:items-center kr:gap-2">{actions}</div>}
@@ -345,5 +363,63 @@ export function Grid({ min = "15rem", cols, className, style, ...props }: HTMLAt
       style={{ "--kr-cols": cols, "--kr-min": min, ...style } as CSSProperties}
       {...props}
     />
+  );
+}
+
+/**
+ * Stays on screen while a long form has unsaved changes. Put it last inside the form, as the last thing on the page.
+ * The save button submits the form.
+ */
+export function SaveBar({ dirty, saving, onDiscard, message, saveLabel, className }: {
+  dirty: boolean;
+  saving?: boolean;
+  onDiscard: () => void;
+  message?: ReactNode;
+  saveLabel?: string;
+  className?: string;
+}) {
+  const t = useLabels();
+  if (!dirty) return null;
+  return (
+    <div role="status" className={cn("kr:sticky kr:bottom-[var(--kora-bottom-nav,0px)] kr:z-10 kr:-mx-4 kr:-mb-4 kr:mt-4 kr:flex kr:flex-wrap kr:items-center kr:gap-x-3 kr:gap-y-2 kr:border-t kr:border-line kr:bg-surface kr:px-4 kr:py-3 kr:lg:-mx-6 kr:lg:-mb-6 kr:lg:px-6", className)}>
+      <p className="kr:w-full kr:text-sm kr:text-muted kr:md:mr-auto kr:md:w-auto">{message ?? t.unsavedChanges}</p>
+      <Button type="button" variant="secondary" disabled={saving} onClick={onDiscard} className="kr:flex-1 kr:md:flex-none">{t.discard}</Button>
+      <Button type="submit" loading={saving} className="kr:flex-1 kr:md:flex-none">{saveLabel ?? t.saveChanges}</Button>
+    </div>
+  );
+}
+
+export type BottomNavItem = { href: string; label: string; icon: ReactNode; active?: boolean; badge?: ReactNode };
+
+/**
+ * Main pages on phones and tablets, within reach of the thumb. Hidden from 1024px, where the sidebar takes over.
+ * Pass it to the AppShell `bottomNav` slot. Use up to four items. With a sidebar, a fifth button opens it for the rest.
+ */
+export function BottomNav({ items, className }: { items: BottomNavItem[]; className?: string }) {
+  const t = useLabels();
+  const { openDrawer, hasSidebar } = useContext(ShellContext);
+  const cell = cn("kr:relative kr:flex kr:min-h-14 kr:min-w-0 kr:cursor-pointer kr:flex-col kr:items-center kr:justify-center kr:gap-0.5 kr:px-1 kr:text-[0.6875rem] kr:leading-4 kr:text-muted kr:outline-none kr:active:bg-surface-2 kr:focus-visible:ring-2 kr:focus-visible:ring-inset kr:focus-visible:ring-accent kr:[&_svg]:size-5 kr:[&_svg]:shrink-0");
+  return (
+    <nav aria-label={t.primaryNav} className={cn("kr:fixed kr:inset-x-0 kr:bottom-0 kr:z-40 kr:border-t kr:border-line kr:bg-surface kr:pb-[env(safe-area-inset-bottom)] kr:lg:hidden", className)}>
+      <ul className="kr:grid kr:auto-cols-fr kr:grid-flow-col">
+        {items.map((item) => (
+          <li key={item.href} className="kr:min-w-0">
+            <KoraLink href={item.href} aria-current={item.active ? "page" : undefined} className={cn(cell, item.active && "kr:font-medium kr:text-accent")}>
+              {item.icon}
+              <span className="kr:w-full kr:truncate kr:text-center">{item.label}</span>
+              {item.badge !== undefined && <Badge className="kr:absolute kr:top-1 kr:left-1/2 kr:ml-1 kr:px-1 kr:text-[0.625rem] kr:leading-3.5">{item.badge}</Badge>}
+            </KoraLink>
+          </li>
+        ))}
+        {hasSidebar && (
+          <li className="kr:min-w-0">
+            <button type="button" aria-haspopup="dialog" onClick={openDrawer} className={cn(cell, "kr:w-full")}>
+              <MoreHorizontal aria-hidden />
+              <span>{t.more}</span>
+            </button>
+          </li>
+        )}
+      </ul>
+    </nav>
   );
 }

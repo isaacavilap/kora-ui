@@ -1,7 +1,9 @@
+import { useEffect, useRef, useState } from "react";
 import type { ComponentProps, ReactNode } from "react";
 import { Tabs as R } from "radix-ui";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button, focusRing } from "./button";
+import { Select } from "./form";
 import { cn, KoraLink, useLabels } from "./provider";
 
 export const Tabs = R.Root;
@@ -132,7 +134,7 @@ export function Stepper({ steps, current, className }: {
 
 export type BreadcrumbItem = { label: ReactNode; href?: string };
 
-/** Page trail. On phones it keeps the last two levels, so it stays on one line. */
+/** Page trail. On phones it keeps only the current page, so the top bar has room for its buttons. */
 export function Breadcrumbs({ items, className }: { items: BreadcrumbItem[]; className?: string }) {
   const t = useLabels();
   return (
@@ -141,8 +143,8 @@ export function Breadcrumbs({ items, className }: { items: BreadcrumbItem[]; cla
         {items.map((item, i) => {
           const last = i === items.length - 1;
           return (
-            <li key={i} className={cn("kr:flex kr:min-w-0 kr:items-center kr:gap-1.5", i < items.length - 2 && "kr:max-md:hidden")}>
-              {i > 0 && <ChevronRight aria-hidden className={cn("kr:size-3.5 kr:shrink-0 kr:text-muted", i === items.length - 2 && "kr:max-md:hidden")} />}
+            <li key={i} className={cn("kr:flex kr:min-w-0 kr:items-center kr:gap-1.5", !last && "kr:max-md:hidden")}>
+              {i > 0 && <ChevronRight aria-hidden className="kr:size-3.5 kr:shrink-0 kr:text-muted kr:max-md:hidden" />}
               {item.href && !last ? (
                 <KoraLink href={item.href} className={cn("kr:truncate kr:text-muted kr:hover:text-fg", focusRing)}>{item.label}</KoraLink>
               ) : (
@@ -153,5 +155,68 @@ export function Breadcrumbs({ items, className }: { items: BreadcrumbItem[]; cla
         })}
       </ol>
     </nav>
+  );
+}
+
+export type NavSection = { id: string; label: string };
+
+/**
+ * Jumps between the sections of a long page, and marks the one on screen.
+ * A sticky list from 1024px, and a select below that. Give each section a matching `id`, and `scroll-margin-top` if the topbar is sticky.
+ */
+export function SectionNav({ sections, className }: { sections: NavSection[]; className?: string }) {
+  const t = useLabels();
+  const [current, setCurrent] = useState(sections[0]?.id ?? "");
+  // After a jump the short last section may never reach the band below, so the choice holds for a moment.
+  const heldUntil = useRef(0);
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries.find((entry) => entry.isIntersecting);
+        if (visible && Date.now() > heldUntil.current) setCurrent(visible.target.id);
+      },
+      { rootMargin: "-20% 0px -70% 0px" },
+    );
+    for (const section of sections) {
+      const element = document.getElementById(section.id);
+      if (element) observer.observe(element);
+    }
+    return () => observer.disconnect();
+  }, [sections]);
+
+  return (
+    <div className={cn("kr:min-w-0 kr:lg:sticky kr:lg:top-20 kr:lg:self-start", className)}>
+      <div className="kr:lg:hidden">
+        <Select
+          aria-label={t.onThisPage}
+          value={current}
+          onValueChange={(id) => {
+            heldUntil.current = Date.now() + 800;
+            setCurrent(id);
+            document.getElementById(id)?.scrollIntoView();
+          }}
+          options={sections.map((s) => ({ value: s.id, label: s.label }))}
+        />
+      </div>
+      <nav aria-label={t.onThisPage} className="kr:hidden kr:lg:block">
+        <ul className="kr:grid kr:gap-0.5">
+          {sections.map((section) => (
+            <li key={section.id}>
+              <a
+                href={`#${section.id}`}
+                onClick={() => {
+                  heldUntil.current = Date.now() + 800;
+                  setCurrent(section.id);
+                }}
+                aria-current={current === section.id ? "true" : undefined}
+                className={cn("kr:block kr:rounded-md kr:px-2.5 kr:py-1.5 kr:text-sm kr:text-muted kr:hover:bg-surface-2 kr:hover:text-fg kr:aria-[current]:bg-surface-2 kr:aria-[current]:font-medium kr:aria-[current]:text-fg", focusRing)}
+              >
+                {section.label}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </nav>
+    </div>
   );
 }

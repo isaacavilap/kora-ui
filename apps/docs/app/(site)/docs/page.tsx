@@ -10,6 +10,13 @@ export default function GetStarted() {
       <h1 className="text-2xl font-semibold">Get started</h1>
       <p className="mt-2 text-[var(--kora-muted)]">Install the package, import one stylesheet, and use it in any React 18 or 19 app. Tailwind is not required.</p>
 
+      <h2>Start from the base project</h2>
+      <p>The fastest way. It comes with Next.js, the menu, sign-in screens, and sample pages ready to run, and it is set up for AI assistants.</p>
+      <CodeBlock lang="bash" code={`npx degit isaacavilap/kora-starter my-app
+cd my-app && npm install && npm run dev`} />
+
+      <h2>Or add it to your project</h2>
+
       <h2>1. Install</h2>
       <CodeBlock lang="bash" code="npm install kora-ui@next" />
 

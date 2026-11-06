@@ -1,7 +1,7 @@
 import { createContext, forwardRef, useContext, useId, useRef, useState } from "react";
 import type { ComponentProps, InputHTMLAttributes, ReactNode, TextareaHTMLAttributes } from "react";
 import { Checkbox as RadixCheckbox, Select as RadixSelect, Switch as RadixSwitch } from "radix-ui";
-import { Check, ChevronDown, Minus } from "lucide-react";
+import { Check, ChevronDown, Minus, Upload } from "lucide-react";
 import { cn, useLabels } from "./provider";
 
 type FieldState = { id: string; describedBy?: string; invalid: boolean; required?: boolean };
@@ -215,5 +215,58 @@ export function OtpInput({ length = 6, value, onChange, onComplete, disabled, au
         {...aria}
       />
     </div>
+  );
+}
+
+/** Drop files or pick them. Uploading and previews stay in your code. `accept` only guides the picker, so check files on your server. */
+export function FileDropzone({ onFiles, accept, multiple, hint, disabled, className }: {
+  onFiles: (files: File[]) => void;
+  accept?: string;
+  multiple?: boolean;
+  hint?: ReactNode;
+  disabled?: boolean;
+  className?: string;
+}) {
+  const t = useLabels();
+  const [over, setOver] = useState(false);
+  const fieldProps = useFieldProps({});
+  return (
+    <label
+      onDragOver={(e) => {
+        e.preventDefault();
+        setOver(!disabled);
+      }}
+      onDragLeave={() => setOver(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setOver(false);
+        if (disabled) return;
+        const files = [...e.dataTransfer.files];
+        if (files.length) onFiles(multiple ? files : files.slice(0, 1));
+      }}
+      className={cn(
+        "kr:flex kr:min-h-28 kr:cursor-pointer kr:flex-col kr:items-center kr:justify-center kr:gap-1 kr:rounded-md kr:border kr:border-dashed kr:border-line-strong kr:p-4 kr:text-center kr:text-sm kr:text-muted kr:transition-colors kr:hover:bg-surface-2 kr:focus-within:border-accent kr:focus-within:ring-2 kr:focus-within:ring-accent/30",
+        over && "kr:border-accent kr:bg-accent-soft",
+        disabled && "kr:cursor-not-allowed kr:opacity-50",
+        className,
+      )}
+    >
+      <Upload aria-hidden className="kr:size-5" />
+      <span className="kr:font-medium kr:text-fg">{t.dropFiles}</span>
+      {hint && <span className="kr:text-[0.8125rem]">{hint}</span>}
+      <input
+        {...fieldProps}
+        type="file"
+        accept={accept}
+        multiple={multiple}
+        disabled={disabled}
+        className="kr:sr-only"
+        onChange={(e) => {
+          const files = [...(e.target.files ?? [])];
+          if (files.length) onFiles(files);
+          e.target.value = ""; // Lets the same file be picked again.
+        }}
+      />
+    </label>
   );
 }

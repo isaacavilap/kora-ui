@@ -20,7 +20,7 @@ Criterio de éxito: `apps/docs` incluye un dashboard demo completo, con login in
 
 ## Fuera de v1
 
-Kanban, calendario, editor de layout arrastrable, tiempo real, form builder, mapas, virtualización de tablas, adaptadores por proveedor de auth y themes adicionales.
+Kanban, editor de layout arrastrable, tiempo real, form builder, mapas, firma, texto enriquecido, virtualización de tablas, adaptadores por proveedor de auth y themes adicionales.
 
 La virtualización se agrega cuando una tabla real no funcione bien con paginación. Los adaptadores se agregan cuando los ejemplos de las docs se repitan demasiado entre proyectos.
 
@@ -67,11 +67,11 @@ Dirección de dependencias: `components` no importa a nadie. `table` y `charts` 
 
 **Layout:** `AppShell`, `Sidebar`, `SidebarGroup`, `SidebarUser`, `Topbar`, `PageHeader`, `Grid`, `Breadcrumbs`, `CommandPalette`, `NotificationsMenu`, `ThemeToggle`.
 
-**Base:** `Button`, `Badge`, `Card`, `Alert`, `Avatar`, `Separator`, `Tabs`, `Dialog`, `Sheet`, `DropdownMenu`, `Tooltip`, `Toast`, `Skeleton`, `EmptyState`, `Pagination`, `Stepper`.
+**Base:** `Button`, `Badge`, `Card`, `Alert`, `Avatar`, `Separator`, `DescriptionList`, `Timeline`, `Tabs`, `Dialog`, `Sheet`, `DropdownMenu`, `Tooltip`, `Toast`, `Skeleton`, `EmptyState`, `Pagination`, `Stepper`.
 
 **Formularios:** `Field`, `Input`, `Textarea`, `Select`, `Combobox`, `Checkbox`, `Switch`, `OtpInput`, `DateRangePicker`.
 
-**Métricas:** `KpiCard` con delta y sparkline, `StatGroup`, `Progress`. `KpiCard` dibuja su sparkline con SVG propio para no cargar Recharts en la entrada principal.
+**Métricas:** `KpiCard` con delta y sparkline, `StatGroup`, `Progress`, `ChartCard`, `SegmentedControl`, `RankedList`, `SegmentBar`, `Funnel`, `Gauge`, `Heatmap`. `KpiCard` dibuja su sparkline con SVG propio para no cargar Recharts en la entrada principal.
 
 **Tabla:** `DataTable`, `FilterBar`.
 
@@ -85,6 +85,21 @@ Dirección de dependencias: `components` no importa a nadie. `table` y `charts` 
 - Cuenta: `AccountScreen`, compuesta por `ProfileSettings`, `PasswordSettings`, `SecuritySettings` y `SessionsSettings`.
 - Equipo: `MembersScreen` e `InviteMemberDialog`.
 - Onboarding: `OnboardingWizard`.
+
+**Agregado tras revisar pantallas reales de administración:**
+
+- Layout: `BottomNav`, `ScopeSwitcher`, `SectionNav`, `SaveBar`, `SidebarGroup`, `CommandPalette`, `NotificationsMenu`, `ThemeScript`.
+- Widgets: `ChartCard`, `SegmentedControl`, `RankedList`, `SegmentBar`, `Funnel`, `Gauge`, `Heatmap`, `StageCounters`, `QuickActions`, `DocumentList`, `AlertList`, `DescriptionList`, `Timeline`.
+- Otros: `EventCalendar`, `ConfirmDialog`, `FileDropzone`.
+- `DataTable`: vista de tarjetas, filas expandibles, totales, CSV y filtros controlados.
+- Plantillas: dashboards (ventas, suscripciones, operaciones), varias empresas (vista de grupo, ajustes por empresa, permisos) y pantallas de administración (hoy, listas por etapa, detalle, formulario, agenda, catálogo, reporte, actividad, ajustes).
+
+**Herramientas alrededor de la librería:**
+
+- `kora-ui-mcp`: servidor MCP por stdio, y remoto en `/mcp` del sitio de docs. El catálogo sale del registro de las docs al compilar.
+- `/llms.txt`: el mismo contenido para asistentes sin MCP.
+- `kora-starter`: repositorio aparte, base en Next.js. Consume `kora-ui` desde npm, como cualquier proyecto.
+- Versionado con Changesets. Ver `VERSIONING.md`.
 
 ## Contrato de las pantallas
 

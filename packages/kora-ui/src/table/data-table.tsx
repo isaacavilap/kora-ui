@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import {
   columnFilteringFeature,
@@ -22,13 +22,14 @@ import {
   type SortingState,
   type Updater,
 } from "@tanstack/react-table";
-import { ArrowDown, ArrowUp, ChevronsUpDown, Columns3, MoreHorizontal } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, ChevronsUpDown, Columns3, Download, LayoutGrid, MoreHorizontal, Rows3 } from "lucide-react";
 import { Button } from "../components/button";
 import { EmptyState, Skeleton } from "../components/display";
 import { Checkbox, Select } from "../components/form";
 import { DateRangePicker, type DateRange } from "../components/pickers";
 import { Pagination } from "../components/navigation";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "../components/overlay";
+import { SegmentedControl } from "../components/widgets";
 import { cn, useLabels } from "../components/provider";
 import { FilterBar, FilterSelect, type FilterOption } from "./filter-bar";
 
@@ -91,6 +92,8 @@ export type DataTableColumn<T> = {
   sortable?: boolean;
   /** Adds a control for this column above the table. */
   filter?: DataTableColumnFilter;
+  /** A totals row. It receives every filtered row in client mode, and the current page in server mode. */
+  footer?: (rows: T[]) => ReactNode;
   align?: "left" | "right";
   /** Leaves the column out of the phone layout. */
   hideOnMobile?: boolean;
@@ -121,6 +124,16 @@ export type DataTableProps<T extends Record<string, any>> = {
   columnToggle?: boolean;
   /** Adds a menu at the end of each row. Return DropdownMenuItem elements. */
   rowActions?: (row: T) => ReactNode;
+  /** Adds a table and card switch on wider screens. Phones already use cards. */
+  viewToggle?: boolean;
+  /** Adds a button to each row that shows more below it. */
+  renderExpanded?: (row: T) => ReactNode;
+  /** Controlled filters, such as ones kept in the URL. Use with `onFiltersChange`. */
+  filters?: DataTableFilters;
+  onFiltersChange?: (filters: DataTableFilters) => void;
+  onSearchChange?: (search: string) => void;
+  /** Adds a CSV button that exports the visible columns of the filtered rows. In server mode it has only the current page, so export from your server for more. */
+  exportFilename?: string;
   /** Server mode: the parent fetches each page. `data` holds only the current page. */
   manual?: boolean;
   rowCount?: number;
@@ -138,6 +151,31 @@ export type DataTableProps<T extends Record<string, any>> = {
   mobile?: "cards" | "scroll";
   className?: string;
 };
+
+/**
+ * Text that opens safely in a spreadsheet. A leading quote stops cells such as
+ * `=HYPERLINK(...)` from running as formulas, since table data can come from users.
+ */
+export function toCsv(headers: string[], rows: unknown[][]) {
+  const cell = (value: unknown) => {
+    if (value === null || value === undefined) return "";
+    if (value instanceof Date) return value.toISOString();
+    let text = String(value);
+    if (typeof value === "string" && /^[=+\-@\t\r]/.test(text)) text = `'${text}`;
+    return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  };
+  return [headers, ...rows].map((row) => row.map(cell).join(",")).join("\r\n");
+}
+
+function download(filename: string, text: string) {
+  // The byte order mark lets Excel read accents correctly.
+  const url = URL.createObjectURL(new Blob(["\ufeff", text], { type: "text/csv;charset=utf-8" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename.endsWith(".csv") ? filename : `${filename}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
 
 function optionsFrom<T extends Record<string, any>>(data: T[], c: DataTableColumn<T>): FilterOption[] {
   const values = new Set<string>();
@@ -159,6 +197,12 @@ export function DataTable<T extends Record<string, any>>({
   toolbarActions,
   columnToggle,
   rowActions,
+  viewToggle,
+  renderExpanded,
+  filters: filtersProp,
+  onFiltersChange,
+  onSearchChange,
+  exportFilename,
   manual,
   rowCount,
   state: controlled,
@@ -177,7 +221,10 @@ export function DataTable<T extends Record<string, any>>({
   const [localSorting, setLocalSorting] = useState<SortingState>([]);
   const [localPagination, setLocalPagination] = useState<PaginationState>({ pageIndex: 0, pageSize });
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-  const [filters, setFilters] = useState<DataTableFilters>({});
+  const [localFilters, setLocalFilters] = useState<DataTableFilters>({});
+  const filters = filtersProp ?? localFilters;
+  const [view, setView] = useState("table");
+  const [expanded, setExpanded] = useState<string[]>([]);
   const [localSearch, setLocalSearch] = useState("");
   const [hiddenColumns, setHiddenColumns] = useState<string[]>([]);
   const search = searchProp ?? localSearch;
@@ -198,8 +245,10 @@ export function DataTable<T extends Record<string, any>>({
   };
 
   const applyFilters = (nextFilters: DataTableFilters, nextSearch: string) => {
-    setFilters(nextFilters);
+    setLocalFilters(nextFilters);
     setLocalSearch(nextSearch);
+    if (nextFilters !== filters) onFiltersChange?.(nextFilters);
+    if (nextSearch !== search) onSearchChange?.(nextSearch);
     setLocalPagination((p) => ({ ...p, pageIndex: 0 }));
     if (manual) onStateChange?.({ ...pagination, pageIndex: 0, sorting, filters: nextFilters, search: nextSearch });
   };
@@ -237,6 +286,7 @@ export function DataTable<T extends Record<string, any>>({
     manualFiltering: manual,
     rowCount: manual ? rowCount : undefined,
     autoResetPageIndex: false,
+    enableSortingRemoval: false,
     globalFilterFn: "includesString",
     state: { sorting, pagination, rowSelection, globalFilter: manual ? undefined : search },
     onSortingChange,
@@ -277,7 +327,20 @@ export function DataTable<T extends Record<string, any>>({
     </DropdownMenu>
   );
   const [titleColumn, ...restColumns] = cardColumns;
-  const useCards = mobile === "cards";
+  const cardsOnly = view === "cards";
+  const useCards = mobile === "cards" || cardsOnly;
+  const phoneOnly = cardsOnly ? undefined : "kr:md:hidden";
+  const footerColumns = shownColumns.filter((c) => c.footer);
+  const footerRows = () => (manual ? data : table.getFilteredRowModel().rows.map((r) => r.original));
+  const toggleExpanded = (id: string) => setExpanded((list) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]));
+  const expandButton = (id: string) => {
+    const open = expanded.includes(id);
+    return (
+      <Button variant="ghost" size="icon" aria-expanded={open} aria-label={open ? t.hideDetails : t.showDetails} onClick={(e) => { e.stopPropagation(); toggleExpanded(id); }}>
+        {open ? <ChevronDown aria-hidden /> : <ChevronRight aria-hidden />}
+      </Button>
+    );
+  };
 
   const body = () => {
     if (error) {
@@ -306,15 +369,39 @@ export function DataTable<T extends Record<string, any>>({
   };
   const status = body();
 
-  const toolbar = (searchable || filterColumns.length > 0 || toolbarActions || columnToggle) && (
+  const exportRows = () => {
+    const exportable = table.getFilteredRowModel().rows;
+    download(exportFilename!, toCsv(shownColumns.map(textOf), exportable.map((row) => shownColumns.map((c) => readValue(row.original, c)))));
+  };
+
+  const toolbar = (searchable || filterColumns.length > 0 || toolbarActions || columnToggle || exportFilename || viewToggle) && (
     <FilterBar
       search={searchable ? search : undefined}
       onSearchChange={searchable ? (text) => applyFilters(filters, text) : undefined}
       searchPlaceholder={searchPlaceholder}
       onClear={anyFilter || (searchable && search) ? clearFilters : undefined}
       actions={
-        (toolbarActions || columnToggle) && (
+        (toolbarActions || columnToggle || exportFilename || viewToggle) && (
           <>
+            {viewToggle && (
+              <span className="kr:hidden kr:md:contents">
+                <SegmentedControl
+                  aria-label={t.viewAs}
+                  value={view}
+                  onChange={setView}
+                  options={[
+                    { value: "table", label: <Rows3 aria-label={t.viewTable} className="kr:size-4" /> },
+                    { value: "cards", label: <LayoutGrid aria-label={t.viewCards} className="kr:size-4" /> },
+                  ]}
+                />
+              </span>
+            )}
+            {exportFilename && (
+              <Button variant="secondary" onClick={exportRows} disabled={Boolean(loading || error) || total === 0}>
+                <Download aria-hidden />
+                {t.exportCsv}
+              </Button>
+            )}
             {columnToggle && (
               // Phone cards already drop columns with hideOnMobile, so the menu would only cost space there.
               <span className="kr:hidden kr:md:contents">
@@ -372,7 +459,7 @@ export function DataTable<T extends Record<string, any>>({
       )}
 
       {useCards && !status && (sortable.length > 0 || selectable) && (
-        <div className="kr:flex kr:items-center kr:gap-3 kr:border-b kr:border-line kr:p-3 kr:md:hidden">
+        <div className={cn("kr:flex kr:items-center kr:gap-3 kr:border-b kr:border-line kr:p-3", phoneOnly)}>
           {selectable && <Checkbox aria-label={t.selectAll} checked={headerCheck} onCheckedChange={(v) => toggleAll(v === true)} />}
           {sortable.length > 0 && (
             <>
@@ -400,16 +487,16 @@ export function DataTable<T extends Record<string, any>>({
       )}
 
       {status && (
-        <div className={useCards ? "kr:md:hidden" : "kr:hidden"}>{status}</div>
+        <div className={useCards ? phoneOnly : "kr:hidden"}>{status}</div>
       )}
 
       {useCards && !status && (
-        <ul className="kr:divide-y kr:divide-line kr:md:hidden">
+        <ul className={cardsOnly ? "kr:grid kr:gap-px kr:bg-line kr:md:grid-cols-2 kr:xl:grid-cols-3" : "kr:divide-y kr:divide-line kr:md:hidden"}>
           {rows.map((row) => (
             <li
               key={row.id}
-              onClick={onRowClick && (() => onRowClick(row.original))}
-              className={cn("kr:flex kr:gap-3 kr:p-3", onRowClick && "kr:cursor-pointer kr:active:bg-surface-2")}
+              onClick={onRowClick && ((e) => { if (!(e.target as Element).closest("a, button, input, label, select, textarea")) onRowClick(row.original); })}
+              className={cn("kr:flex kr:flex-wrap kr:gap-3 kr:bg-surface kr:p-3", onRowClick && "kr:cursor-pointer kr:active:bg-surface-2")}
             >
               {selectable && (
                 <span onClick={(e) => e.stopPropagation()} className="kr:pt-0.5">
@@ -427,13 +514,26 @@ export function DataTable<T extends Record<string, any>>({
                   ))}
                 </dl>
               </div>
+              {renderExpanded && <span className="kr:-mt-1 kr:shrink-0">{expandButton(row.id)}</span>}
               {rowActions && <span onClick={(e) => e.stopPropagation()} className="kr:-mt-1 kr:-mr-1 kr:shrink-0">{actionsMenu(row.original)}</span>}
+              {renderExpanded && expanded.includes(row.id) && <div className="kr:w-full kr:border-t kr:border-line kr:pt-3 kr:text-sm">{renderExpanded(row.original)}</div>}
             </li>
           ))}
         </ul>
       )}
 
-      <div className={cn(useCards ? "kr:hidden kr:md:block" : "kr:block", "kr:overflow-x-auto")}>
+      {useCards && !status && footerColumns.length > 0 && (
+        <dl className={cn("kr:space-y-1 kr:border-t kr:border-line kr:bg-surface-2 kr:p-3 kr:text-sm kr:font-medium", phoneOnly)}>
+          {footerColumns.map((c) => (
+            <div key={c.id} className="kr:flex kr:justify-between kr:gap-4">
+              <dt>{textOf(c)}</dt>
+              <dd className="kr:tabular-nums">{c.footer!(footerRows())}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+
+      <div className={cn(cardsOnly ? "kr:hidden" : useCards ? "kr:hidden kr:md:block" : "kr:block", "kr:overflow-x-auto")}>
         <table className="kr:w-full kr:border-collapse kr:text-sm" aria-busy={loading || undefined}>
           <thead>
             <tr className="kr:border-b kr:border-line">
@@ -442,6 +542,7 @@ export function DataTable<T extends Record<string, any>>({
                   <Checkbox aria-label={t.selectAll} checked={headerCheck} onCheckedChange={(v) => toggleAll(v === true)} className="kr:align-middle" />
                 </th>
               )}
+              {renderExpanded && <th scope="col" className="kr:w-10 kr:px-1"><span className="kr:sr-only">{t.showDetails}</span></th>}
               {shownColumns.map((c) => {
                 const sort = sorting.find((s) => s.id === c.id);
                 const Icon = !sort ? ChevronsUpDown : sort.desc ? ArrowDown : ArrowUp;
@@ -477,9 +578,9 @@ export function DataTable<T extends Record<string, any>>({
           {!status && (
             <tbody>
               {rows.map((row) => (
+                <Fragment key={row.id}>
                 <tr
-                  key={row.id}
-                  onClick={onRowClick && (() => onRowClick(row.original))}
+                  onClick={onRowClick && ((e) => { if (!(e.target as Element).closest("a, button, input, label, select, textarea")) onRowClick(row.original); })}
                   data-selected={row.getIsSelected() || undefined}
                   className={cn(
                     "kr:border-b kr:border-line kr:last:border-b-0 kr:hover:bg-surface-2 kr:data-[selected]:bg-accent-soft",
@@ -491,6 +592,7 @@ export function DataTable<T extends Record<string, any>>({
                       <Checkbox aria-label={t.selectRow} checked={row.getIsSelected()} onCheckedChange={(v) => row.toggleSelected(v === true)} className="kr:align-middle" />
                     </td>
                   )}
+                  {renderExpanded && <td className="kr:px-1">{expandButton(row.id)}</td>}
                   {shownColumns.map((c) => (
                     <td
                       key={c.id}
@@ -501,8 +603,26 @@ export function DataTable<T extends Record<string, any>>({
                   ))}
                   {rowActions && <td className="kr:px-1 kr:text-right" onClick={(e) => e.stopPropagation()}>{actionsMenu(row.original)}</td>}
                 </tr>
+                {renderExpanded && expanded.includes(row.id) && (
+                  <tr className="kr:border-b kr:border-line kr:last:border-b-0">
+                    <td colSpan={shownColumns.length + (selectable ? 1 : 0) + 1 + (rowActions ? 1 : 0)} className="kr:bg-surface-2/50 kr:px-3 kr:py-3 kr:text-sm">{renderExpanded(row.original)}</td>
+                  </tr>
+                )}
+                </Fragment>
               ))}
             </tbody>
+          )}
+          {!status && footerColumns.length > 0 && (
+            <tfoot>
+              <tr className="kr:border-t kr:border-line kr:bg-surface-2 kr:font-medium">
+                {selectable && <td />}
+                {renderExpanded && <td />}
+                {shownColumns.map((c) => (
+                  <td key={c.id} className={cn("kr:px-3 kr:py-2", c.align === "right" && "kr:text-right kr:tabular-nums")}>{c.footer?.(footerRows())}</td>
+                ))}
+                {rowActions && <td />}
+              </tr>
+            </tfoot>
           )}
         </table>
         {status && <div className={useCards ? "kr:hidden kr:md:block" : undefined}>{status}</div>}

@@ -1,18 +1,23 @@
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { Dialog as D, Popover } from "radix-ui";
-import { Bell, ChevronsUpDown, Moon, Search, Sun } from "lucide-react";
+import { Bell, Check, ChevronsUpDown, Moon, Search, Sun } from "lucide-react";
 import { Button, focusRing, popoverClass } from "./button";
 import { Avatar } from "./display";
 import { Input } from "./form";
 import { useSidebar } from "./layout";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "./overlay";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "./overlay";
 import { cn, KoraLink, useLabels } from "./provider";
 
 const THEME_KEY = "kora-theme";
 
 /** Add to an inline script in the document head, so the saved theme applies before the first paint. */
 export const themeScript = `(function(){try{var t=localStorage.getItem("${THEME_KEY}");var d=t?t==="dark":matchMedia("(prefers-color-scheme: dark)").matches;document.documentElement.classList.toggle("dark",d)}catch(e){}})()`;
+
+/** Put it in the document head, so the saved theme applies before the first paint. Works in a server layout. */
+export function ThemeScript() {
+  return <script dangerouslySetInnerHTML={{ __html: themeScript }} />;
+}
 
 /** Switches the `.dark` class on the page and saves the choice. */
 export function ThemeToggle({ className }: { className?: string }) {
@@ -99,10 +104,10 @@ export function CommandPalette({ items, placeholder, className }: { items: Comma
 
   return (
     <>
-      <Button variant="secondary" aria-label={t.commandTitle} onClick={() => setOpen(true)} className={cn("kr:px-2.5 kr:font-normal kr:text-muted", className)}>
+      <Button variant="secondary" onClick={() => setOpen(true)} className={cn("kr:px-2.5 kr:font-normal kr:text-muted", className)}>
         <Search aria-hidden />
-        <span className="kr:hidden kr:md:inline">{t.search}</span>
-        <kbd className="kr:hidden kr:rounded-sm kr:border kr:border-line kr:px-1 kr:font-sans kr:text-xs kr:md:inline">{shortcut}</kbd>
+        <span className="kr:sr-only kr:md:not-sr-only">{t.search}</span>
+        <kbd aria-hidden className="kr:hidden kr:rounded-sm kr:border kr:border-line kr:px-1 kr:font-sans kr:text-xs kr:md:inline">{shortcut}</kbd>
       </Button>
       <D.Root open={open} onOpenChange={change}>
         <D.Portal>
@@ -181,10 +186,11 @@ export function NotificationsMenu({ items, onMarkAllRead, onSelect, className }:
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
       <Popover.Trigger asChild>
-        <Button variant="ghost" size="icon" aria-label={unread ? `${t.notifications} (${unread})` : t.notifications} className={cn("kr:relative", className)}>
+        <Button variant="ghost" size="icon" className={cn("kr:relative", className)}>
           <Bell aria-hidden />
+          <span className="kr:sr-only">{t.notifications} </span>
           {unread > 0 && (
-            <span aria-hidden className="kr:absolute kr:top-1 kr:right-1 kr:flex kr:h-4 kr:min-w-4 kr:items-center kr:justify-center kr:rounded-full kr:bg-accent kr:px-1 kr:text-[0.625rem] kr:font-medium kr:text-accent-fg kr:tabular-nums">
+            <span className="kr:absolute kr:top-1 kr:right-1 kr:flex kr:h-4 kr:min-w-4 kr:items-center kr:justify-center kr:rounded-full kr:bg-accent kr:px-1 kr:text-[0.625rem] kr:font-medium kr:text-accent-fg kr:tabular-nums">
               {unread > 99 ? "99+" : unread}
             </span>
           )}
@@ -240,10 +246,10 @@ export function SidebarUser({ name, email, avatar, children }: { name: string; e
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        aria-label={`${t.accountMenu}: ${name}`}
         className={cn("kr:flex kr:min-h-11 kr:w-full kr:cursor-pointer kr:items-center kr:gap-2.5 kr:rounded-md kr:text-left kr:hover:bg-surface-2 kr:lg:min-h-9", rail ? "kr:justify-center" : "kr:px-1.5", focusRing, "kr:focus-visible:-outline-offset-2")}
       >
-        <Avatar name={name} src={avatar} size={rail ? 28 : 30} />
+        <span className="kr:sr-only">{`${t.accountMenu}: `}{rail && name}</span>
+        <span aria-hidden className="kr:flex kr:shrink-0"><Avatar name={name} src={avatar} size={rail ? 28 : 30} /></span>
         {!rail && (
           <>
             <span className="kr:min-w-0 kr:flex-1">
@@ -255,6 +261,56 @@ export function SidebarUser({ name, email, avatar, children }: { name: string; e
         )}
       </DropdownMenuTrigger>
       <DropdownMenuContent side={rail ? "right" : "top"} align={rail ? "end" : "start"}>{children}</DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+export type ScopeOption = {
+  value: string;
+  label: string;
+  description?: ReactNode;
+  logo?: ReactNode;
+  /** Options with the same group sit together under this heading, such as "Companies". */
+  group?: string;
+};
+
+/** Sets what the whole app is showing, such as a company, branch, or team. Put it in the Sidebar `scope` slot. */
+export function ScopeSwitcher({ label, options, value, onChange }: { label: string; options: ScopeOption[]; value: string; onChange: (value: string) => void }) {
+  const { rail } = useSidebar();
+  const t = useLabels();
+  const current = options.find((o) => o.value === value);
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        className={cn("kr:flex kr:min-h-11 kr:w-full kr:cursor-pointer kr:items-center kr:gap-2 kr:rounded-md kr:border kr:border-line kr:text-left kr:text-sm kr:hover:bg-surface-2 kr:lg:min-h-9", rail ? "kr:justify-center" : "kr:px-2.5", focusRing)}
+      >
+        <span className="kr:sr-only">{`${t.switchScope} ${label}: `}{rail && current?.label}</span>
+        {rail ? (
+          <span aria-hidden>{current?.logo ?? <span className="kr:text-xs kr:font-medium">{current?.label[0]?.toUpperCase()}</span>}</span>
+        ) : (
+          <>
+            {current?.logo && <span aria-hidden className="kr:flex">{current.logo}</span>}
+            <span className="kr:min-w-0 kr:flex-1 kr:truncate kr:font-medium">{current?.label}</span>
+            <ChevronsUpDown aria-hidden className="kr:size-4 kr:shrink-0 kr:text-muted" />
+          </>
+        )}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" side={rail ? "right" : "bottom"} className="kr:w-[max(var(--radix-dropdown-menu-trigger-width),16rem)] kr:p-1.5">
+        {options.map((o, i) => (
+          <Fragment key={o.value}>
+            {o.group !== options[i - 1]?.group && i > 0 && <DropdownMenuSeparator className="kr:my-1.5" />}
+            {o.group && o.group !== options[i - 1]?.group && <DropdownMenuLabel className="kr:block">{o.group}</DropdownMenuLabel>}
+            <DropdownMenuItem className="kr:gap-2.5 kr:py-2 kr:not-first:mt-0.5" onSelect={() => onChange(o.value)}>
+              {o.logo && <span aria-hidden className="kr:flex">{o.logo}</span>}
+              <span className="kr:min-w-0 kr:flex-1">
+                <span className="kr:block kr:truncate kr:leading-5">{o.label}</span>
+                {o.description && <span className="kr:mt-0.5 kr:block kr:truncate kr:text-xs kr:leading-4 kr:text-muted">{o.description}</span>}
+              </span>
+              {o.value === value && <Check aria-hidden className="kr:size-4 kr:text-accent" />}
+            </DropdownMenuItem>
+          </Fragment>
+        ))}
+      </DropdownMenuContent>
     </DropdownMenu>
   );
 }
