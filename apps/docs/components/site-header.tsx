@@ -2,10 +2,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Button, Sheet, SheetContent } from "kora-ui";
+import { Button, Sheet, SheetContent, ThemeToggle } from "kora-ui";
 import { Menu } from "lucide-react";
 import { Logo } from "@/templates/logo";
-import { ThemeToggle } from "./theme-toggle";
 import { DocsNav } from "./docs-nav";
 
 const links = [

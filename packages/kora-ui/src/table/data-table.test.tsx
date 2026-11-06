@@ -2,7 +2,7 @@ import { useState } from "react";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { DataTable, type DataTableColumn, type DataTableState } from "./data-table";
+import { DataTable, matchesFilter, type DataTableColumn, type DataTableState } from "./data-table";
 
 type Row = { id: string; name: string; total: number };
 const data: Row[] = Array.from({ length: 12 }, (_, i) => ({ id: String(i + 1), name: `Order ${String(i + 1).padStart(2, "0")}`, total: 100 - i }));
@@ -99,5 +99,70 @@ describe("DataTable server mode", () => {
     await userEvent.click(within(screen.getByRole("table")).getByRole("button", { name: "Total" }));
     expect(changes.at(-1)).toMatchObject({ pageIndex: 0, sorting: [{ id: "total" }] });
     expect(names()[0]).toBe("Order 01");
+  });
+});
+
+describe("matchesFilter", () => {
+  it("matches any chosen value", () => {
+    expect(matchesFilter("paid", ["paid", "failed"])).toBe(true);
+    expect(matchesFilter("pending", ["paid"])).toBe(false);
+    expect(matchesFilter(undefined, ["paid"])).toBe(false);
+    expect(matchesFilter("pending", [])).toBe(true);
+  });
+
+  it("treats date ranges as whole local days", () => {
+    const range = { from: new Date(2026, 2, 1), to: new Date(2026, 2, 3) };
+    expect(matchesFilter("2026-03-01", range)).toBe(true);
+    expect(matchesFilter(new Date(2026, 2, 3, 23, 30), range)).toBe(true);
+    expect(matchesFilter("2026-03-04", range)).toBe(false);
+    expect(matchesFilter("2026-02-28", range)).toBe(false);
+    expect(matchesFilter(undefined, range)).toBe(false);
+  });
+});
+
+describe("DataTable toolbar", () => {
+  type Sale = { id: string; name: string; status: string };
+  const sales: Sale[] = [
+    { id: "1", name: "Ana", status: "paid" },
+    { id: "2", name: "Ben", status: "failed" },
+    { id: "3", name: "Cleo", status: "paid" },
+  ];
+  const saleColumns: DataTableColumn<Sale>[] = [
+    { id: "name", header: "Name", accessor: "name" },
+    { id: "status", header: "Status", accessor: "status", filter: { type: "select" } },
+  ];
+
+  it("takes options from the data, filters, and clears", async () => {
+    render(<DataTable columns={saleColumns} data={sales} getRowId={(r) => r.id} />);
+    await userEvent.click(screen.getByRole("button", { name: "Status" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "failed" }));
+    expect(names()).toEqual(["Ben"]);
+    await userEvent.keyboard("{Escape}");
+    await userEvent.click(screen.getByRole("button", { name: "Clear filters" }));
+    expect(names()).toEqual(["Ana", "Ben", "Cleo"]);
+  });
+
+  it("offers a way out when filters leave no rows", async () => {
+    render(<DataTable columns={saleColumns} data={sales} getRowId={(r) => r.id} searchable />);
+    await userEvent.type(screen.getByRole("searchbox"), "zzz");
+    expect(screen.getAllByText("No results").length).toBeGreaterThan(0);
+  });
+
+  it("sends filters to the parent in server mode", async () => {
+    const onStateChange = vi.fn();
+    const withOptions: DataTableColumn<Sale>[] = [saleColumns[0]!, { ...saleColumns[1]!, filter: { type: "select", options: [{ value: "paid", label: "Paid" }] } }];
+    render(<DataTable manual rowCount={3} columns={withOptions} data={sales} getRowId={(r) => r.id} state={{ pageIndex: 2, pageSize: 1, sorting: [] }} onStateChange={onStateChange} />);
+    await userEvent.click(screen.getByRole("button", { name: "Status" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "Paid" }));
+    expect(onStateChange).toHaveBeenLastCalledWith(expect.objectContaining({ pageIndex: 0, filters: { status: ["paid"] } }));
+  });
+
+  it("hides columns, and keeps at least one", async () => {
+    render(<DataTable columns={saleColumns.map((c) => ({ ...c, filter: undefined }))} data={sales} getRowId={(r) => r.id} columnToggle />);
+    await userEvent.click(screen.getByRole("button", { name: /Columns/ }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "Status" }));
+    expect(within(screen.getByRole("table", { hidden: true })).queryByText("failed")).toBeNull();
+    await userEvent.click(screen.getByRole("checkbox", { name: "Name" }));
+    expect(within(screen.getByRole("table", { hidden: true })).getByText("Ana")).toBeInTheDocument();
   });
 });

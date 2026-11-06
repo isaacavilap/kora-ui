@@ -2,7 +2,7 @@ import type { ComponentProps, ReactNode } from "react";
 import { Tabs as R } from "radix-ui";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button, focusRing } from "./button";
-import { cn, useLabels } from "./provider";
+import { cn, KoraLink, useLabels } from "./provider";
 
 export const Tabs = R.Root;
 
@@ -127,5 +127,31 @@ export function Stepper({ steps, current, className }: {
         ))}
       </ol>
     </div>
+  );
+}
+
+export type BreadcrumbItem = { label: ReactNode; href?: string };
+
+/** Page trail. On phones it keeps the last two levels, so it stays on one line. */
+export function Breadcrumbs({ items, className }: { items: BreadcrumbItem[]; className?: string }) {
+  const t = useLabels();
+  return (
+    <nav aria-label={t.breadcrumb} className={cn("kr:min-w-0", className)}>
+      <ol className="kr:flex kr:min-w-0 kr:items-center kr:gap-1.5 kr:text-sm">
+        {items.map((item, i) => {
+          const last = i === items.length - 1;
+          return (
+            <li key={i} className={cn("kr:flex kr:min-w-0 kr:items-center kr:gap-1.5", i < items.length - 2 && "kr:max-md:hidden")}>
+              {i > 0 && <ChevronRight aria-hidden className={cn("kr:size-3.5 kr:shrink-0 kr:text-muted", i === items.length - 2 && "kr:max-md:hidden")} />}
+              {item.href && !last ? (
+                <KoraLink href={item.href} className={cn("kr:truncate kr:text-muted kr:hover:text-fg", focusRing)}>{item.label}</KoraLink>
+              ) : (
+                <span aria-current={last ? "page" : undefined} className={cn("kr:truncate", last ? "kr:font-medium kr:text-fg" : "kr:text-muted")}>{item.label}</span>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
   );
 }

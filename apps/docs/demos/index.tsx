@@ -40,5 +40,9 @@ export const demos: Record<string, ComponentType> = {
   "app-shell": dynamic(() => import("./app-shell")),
   "page-header": dynamic(() => import("./page-header")),
   grid: dynamic(() => import("./grid")),
+  "command-palette": dynamic(() => import("./command-palette")),
+  "notifications-menu": dynamic(() => import("./notifications-menu")),
+  breadcrumbs: dynamic(() => import("./breadcrumbs")),
+  "theme-toggle": dynamic(() => import("./theme-toggle")),
 };
 

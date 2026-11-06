@@ -22,8 +22,9 @@ export {
   Toaster,
   toast,
 } from "./overlay";
-export { Tabs, TabsList, TabsTrigger, TabsContent, Pagination, Stepper } from "./navigation";
+export { Tabs, TabsList, TabsTrigger, TabsContent, Pagination, Stepper, Breadcrumbs, type BreadcrumbItem } from "./navigation";
 export { Field, Input, Textarea, Select, Checkbox, Switch, OtpInput, type SelectOption } from "./form";
 export { Combobox, DateRangePicker, type ComboboxOption, type DateRange, type DatePreset } from "./pickers";
-export { AppShell, Sidebar, SidebarSection, SidebarItem, Topbar, PageHeader, Grid } from "./layout";
+export { AppShell, Sidebar, SidebarSection, SidebarItem, SidebarGroup, Topbar, PageHeader, Grid, useSidebar } from "./layout";
+export { CommandPalette, NotificationsMenu, SidebarUser, ThemeToggle, themeScript, type CommandItem, type Notification } from "./shell-tools";
 export { KpiCard, StatGroup, Progress, Delta, type Stat } from "./metrics";

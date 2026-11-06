@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
-import { Badge, Button, Dialog, DialogContent, Field, Input, PageHeader, Select, Sheet, SheetContent, StatGroup, Toaster, toast } from "kora-ui";
-import { DataTable, FilterBar, type DataTableColumn } from "kora-ui/table";
+import { Badge, Button, Dialog, DialogContent, DropdownMenuItem, Field, Input, PageHeader, Select, Sheet, SheetContent, StatGroup, Tabs, TabsContent, TabsList, TabsTrigger, Toaster, toast } from "kora-ui";
+import { DataTable, type DataTableColumn } from "kora-ui/table";
 import { Plus } from "lucide-react";
 import { money, orders as seed, statusTone, type Order, type OrderStatus } from "@/lib/demo-data";
 import { DemoShell } from "./shell";
@@ -10,8 +10,6 @@ const statusOptions = (["paid", "pending", "failed", "refunded"] as OrderStatus[
 
 export default function Template() {
   const [orders, setOrders] = useState(seed);
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("");
   const [creating, setCreating] = useState(false);
   const [viewing, setViewing] = useState<Order>();
   const [deleting, setDeleting] = useState<Order[]>();
@@ -21,14 +19,34 @@ export default function Template() {
       { id: "id", header: "Order", accessor: "id", sortable: true },
       { id: "customer", header: "Customer", accessor: "customer", sortable: true },
       { id: "email", header: "Email", accessor: "email", hideOnMobile: true },
-      { id: "date", header: "Date", accessor: "date", sortable: true },
-      { id: "status", header: "Status", accessor: "status", sortable: true, cell: (o) => <Badge tone={statusTone[o.status]} className="capitalize">{o.status}</Badge> },
+      { id: "date", header: "Date", accessor: "date", sortable: true, filter: { type: "date" } },
+      { id: "status", header: "Status", accessor: "status", sortable: true, filter: { type: "select", options: statusOptions }, cell: (o) => <Badge tone={statusTone[o.status]} className="capitalize">{o.status}</Badge> },
       { id: "total", header: "Total", accessor: "total", sortable: true, align: "right", cell: (o) => money(o.total) },
     ],
     [],
   );
-  const rows = useMemo(() => (status ? orders.filter((o) => o.status === status) : orders), [orders, status]);
-  const filtered = Boolean(search || status);
+  const attention = useMemo(() => orders.filter((o) => o.status === "pending" || o.status === "failed"), [orders]);
+  const ordersTable = (rows: Order[]) => (
+    <DataTable
+      columns={columns}
+      data={rows}
+      getRowId={(o) => o.id}
+      searchable
+      searchPlaceholder="Search orders"
+      columnToggle
+      selectable
+      rowActions={(o) => (
+        <>
+          <DropdownMenuItem onSelect={() => setViewing(o)}>View details</DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => setDeleting([o])}>Delete</DropdownMenuItem>
+        </>
+      )}
+      onRowClick={setViewing}
+      bulkActions={(selected, clear) => (
+        <Button variant="danger" size="sm" onClick={() => { setDeleting(selected); clear(); }}>Delete</Button>
+      )}
+    />
+  );
 
   return (
     <DemoShell page="orders" title="Orders">
@@ -43,25 +61,14 @@ export default function Template() {
           { label: "Refunded", value: orders.filter((o) => o.status === "refunded").length },
         ]}
       />
-      <FilterBar
-        search={search}
-        onSearchChange={setSearch}
-        searchPlaceholder="Search orders"
-        onClear={filtered ? () => { setSearch(""); setStatus(""); } : undefined}
-      >
-        <Select aria-label="Status" placeholder="Status" value={status} onValueChange={setStatus} options={statusOptions} />
-      </FilterBar>
-      <DataTable
-        columns={columns}
-        data={rows}
-        getRowId={(o) => o.id}
-        search={search}
-        selectable
-        onRowClick={setViewing}
-        bulkActions={(selected, clear) => (
-          <Button variant="danger" size="sm" onClick={() => { setDeleting(selected); clear(); }}>Delete</Button>
-        )}
-      />
+      <Tabs defaultValue="all" className="mb-3">
+        <TabsList>
+          <TabsTrigger value="all">All orders</TabsTrigger>
+          <TabsTrigger value="attention">Needs attention</TabsTrigger>
+        </TabsList>
+        <TabsContent value="all" className="mt-3">{ordersTable(orders)}</TabsContent>
+        <TabsContent value="attention" className="mt-3">{ordersTable(attention)}</TabsContent>
+      </Tabs>
 
       <Sheet open={Boolean(viewing)} onOpenChange={(open) => !open && setViewing(undefined)}>
         <SheetContent title={viewing?.id} description={viewing?.customer}>

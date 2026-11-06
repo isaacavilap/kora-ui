@@ -4,13 +4,10 @@ import { DayPicker, type DateRange } from "@daypicker/react";
 import { es as dayEs } from "@daypicker/react/locale";
 import { Calendar, Check, ChevronDown } from "lucide-react";
 import { FieldContext, Input, useFieldProps } from "./form";
-import { Button } from "./button";
+import { Button, popoverClass } from "./button";
 import { cn, useKora, useLabels } from "./provider";
 
 export type { DateRange };
-
-const popoverClass =
-  "kr:z-50 kr:rounded-md kr:border kr:border-line kr:bg-surface kr:text-fg kr:shadow-overlay kr:outline-none kr:animate-[kr-pop-in_120ms_ease-out]";
 
 export type ComboboxOption = { value: string; label: string };
 

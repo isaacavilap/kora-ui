@@ -71,3 +71,6 @@ export function Spinner({ className }: { className?: string }) {
     />
   );
 }
+
+export const popoverClass =
+  "kr:z-50 kr:rounded-md kr:border kr:border-line kr:bg-surface kr:text-fg kr:shadow-overlay kr:outline-none kr:animate-[kr-pop-in_120ms_ease-out]";

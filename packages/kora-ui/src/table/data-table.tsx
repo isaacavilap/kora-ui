@@ -22,12 +22,15 @@ import {
   type SortingState,
   type Updater,
 } from "@tanstack/react-table";
-import { ArrowDown, ArrowUp, ChevronsUpDown } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronsUpDown, Columns3, MoreHorizontal } from "lucide-react";
 import { Button } from "../components/button";
 import { EmptyState, Skeleton } from "../components/display";
 import { Checkbox, Select } from "../components/form";
+import { DateRangePicker, type DateRange } from "../components/pickers";
 import { Pagination } from "../components/navigation";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "../components/overlay";
 import { cn, useLabels } from "../components/provider";
+import { FilterBar, FilterSelect, type FilterOption } from "./filter-bar";
 
 const features = tableFeatures({
   columnFilteringFeature,
@@ -42,6 +45,40 @@ const features = tableFeatures({
   sortFns: { alphanumeric: sortFn_alphanumeric, basic: sortFn_basic, datetime: sortFn_datetime, text: sortFn_text },
 });
 
+export type DataTableColumnFilter =
+  /** Multiple choice. Client mode builds `options` from the data when omitted. Server mode needs them. */
+  | { type: "select"; options?: FilterOption[] }
+  | { type: "date" };
+
+/** Select filters hold the chosen values. Date filters hold a range. */
+export type DataTableFilters = Record<string, string[] | DateRange | undefined>;
+
+const isActive = (value: DataTableFilters[string]) => (Array.isArray(value) ? value.length > 0 : Boolean(value?.from));
+
+/** Date-only strings parse as local days, because `new Date("2026-03-01")` is UTC and can land on the day before. */
+function toTime(value: unknown) {
+  if (value === null || value === undefined || value === "") return NaN;
+  const text = typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T00:00:00` : value;
+  return new Date(text as string | number | Date).getTime();
+}
+
+/** The client mode test for one filter. A date range includes all of its last day. */
+export function matchesFilter(value: unknown, filter: DataTableFilters[string]) {
+  if (!filter || !isActive(filter)) return true;
+  if (Array.isArray(filter)) return value !== null && value !== undefined && filter.includes(String(value));
+  const time = toTime(value);
+  const end = new Date(filter.to ?? filter.from!);
+  end.setHours(23, 59, 59, 999);
+  const start = new Date(filter.from!);
+  start.setHours(0, 0, 0, 0);
+  return time >= start.getTime() && time <= end.getTime();
+}
+
+const readValue = <T extends Record<string, any>>(row: T, c: DataTableColumn<T>) => {
+  const value = typeof c.accessor === "function" ? c.accessor(row) : c.accessor ? row[c.accessor] : undefined;
+  return value === null ? undefined : value;
+};
+
 export type DataTableColumn<T> = {
   id: string;
   header: ReactNode;
@@ -52,12 +89,21 @@ export type DataTableColumn<T> = {
   /** Custom rendering. Defaults to the accessor value. */
   cell?: (row: T) => ReactNode;
   sortable?: boolean;
+  /** Adds a control for this column above the table. */
+  filter?: DataTableColumnFilter;
   align?: "left" | "right";
   /** Leaves the column out of the phone layout. */
   hideOnMobile?: boolean;
 };
 
-export type DataTableState = { pageIndex: number; pageSize: number; sorting: Array<{ id: string; desc: boolean }> };
+export type DataTableState = {
+  pageIndex: number;
+  pageSize: number;
+  sorting: Array<{ id: string; desc: boolean }>;
+  /** Server mode: apply these when you fetch. Debounce `search`, because it changes on each keystroke. */
+  filters?: DataTableFilters;
+  search?: string;
+};
 
 export type DataTableProps<T extends Record<string, any>> = {
   columns: DataTableColumn<T>[];
@@ -66,6 +112,15 @@ export type DataTableProps<T extends Record<string, any>> = {
   /** Client mode: rows per page, and text to match against all columns. */
   pageSize?: number;
   search?: string;
+  /** Adds a search field above the table. Leave off `search` to let the table keep the text. */
+  searchable?: boolean;
+  searchPlaceholder?: string;
+  /** Shown at the end of the filter row. */
+  toolbarActions?: ReactNode;
+  /** Adds a menu to show or hide columns. */
+  columnToggle?: boolean;
+  /** Adds a menu at the end of each row. Return DropdownMenuItem elements. */
+  rowActions?: (row: T) => ReactNode;
   /** Server mode: the parent fetches each page. `data` holds only the current page. */
   manual?: boolean;
   rowCount?: number;
@@ -84,12 +139,26 @@ export type DataTableProps<T extends Record<string, any>> = {
   className?: string;
 };
 
+function optionsFrom<T extends Record<string, any>>(data: T[], c: DataTableColumn<T>): FilterOption[] {
+  const values = new Set<string>();
+  for (const row of data) {
+    const value = readValue(row, c);
+    if (value !== undefined && value !== "") values.add(String(value));
+  }
+  return [...values].sort((a, b) => a.localeCompare(b)).map((value) => ({ value, label: value }));
+}
+
 export function DataTable<T extends Record<string, any>>({
   columns,
   data,
   getRowId,
   pageSize = 10,
-  search,
+  search: searchProp,
+  searchable,
+  searchPlaceholder,
+  toolbarActions,
+  columnToggle,
+  rowActions,
   manual,
   rowCount,
   state: controlled,
@@ -108,6 +177,10 @@ export function DataTable<T extends Record<string, any>>({
   const [localSorting, setLocalSorting] = useState<SortingState>([]);
   const [localPagination, setLocalPagination] = useState<PaginationState>({ pageIndex: 0, pageSize });
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [filters, setFilters] = useState<DataTableFilters>({});
+  const [localSearch, setLocalSearch] = useState("");
+  const [hiddenColumns, setHiddenColumns] = useState<string[]>([]);
+  const search = searchProp ?? localSearch;
 
   const sorting = (manual && controlled?.sorting) || localSorting;
   const pagination = manual && controlled ? { pageIndex: controlled.pageIndex, pageSize: controlled.pageSize } : localPagination;
@@ -116,13 +189,31 @@ export function DataTable<T extends Record<string, any>>({
     const next = functionalUpdate(updater, sorting);
     setLocalSorting(next);
     setLocalPagination((p) => ({ ...p, pageIndex: 0 }));
-    if (manual) onStateChange?.({ ...pagination, pageIndex: 0, sorting: next });
+    if (manual) onStateChange?.({ ...pagination, pageIndex: 0, sorting: next, filters, search });
   };
   const onPaginationChange = (updater: Updater<PaginationState>) => {
     const next = functionalUpdate(updater, pagination);
     setLocalPagination(next);
-    if (manual) onStateChange?.({ ...next, sorting });
+    if (manual) onStateChange?.({ ...next, sorting, filters, search });
   };
+
+  const applyFilters = (nextFilters: DataTableFilters, nextSearch: string) => {
+    setFilters(nextFilters);
+    setLocalSearch(nextSearch);
+    setLocalPagination((p) => ({ ...p, pageIndex: 0 }));
+    if (manual) onStateChange?.({ ...pagination, pageIndex: 0, sorting, filters: nextFilters, search: nextSearch });
+  };
+  const filterColumns = columns.filter((c) => c.filter);
+  const anyFilter = Object.values(filters).some(isActive);
+  const filtering = anyFilter || Boolean(search);
+  const clearFilters = () => applyFilters({}, "");
+
+  const filteredData = useMemo(
+    () => (manual || !anyFilter ? data : data.filter((row) => filterColumns.every((c) => matchesFilter(readValue(row, c), filters[c.id])))),
+    // filterColumns comes from columns.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [data, columns, filters, manual, anyFilter],
+  );
 
   const defs = useMemo(
     () =>
@@ -130,10 +221,7 @@ export function DataTable<T extends Record<string, any>>({
         id: c.id,
         header: c.id,
         enableSorting: Boolean(c.sortable),
-        accessorFn: (row: T) => {
-          const value = typeof c.accessor === "function" ? c.accessor(row) : c.accessor ? row[c.accessor] : undefined;
-          return value === null ? undefined : value;
-        },
+        accessorFn: (row: T) => readValue(row, c),
       })),
     [columns],
   );
@@ -141,7 +229,7 @@ export function DataTable<T extends Record<string, any>>({
   const table = useTable<typeof features, T>({
     features,
     columns: defs as never,
-    data,
+    data: filteredData,
     getRowId,
     enableRowSelection: Boolean(selectable),
     manualSorting: manual,
@@ -159,7 +247,7 @@ export function DataTable<T extends Record<string, any>>({
   // A new search restarts at page 1, and a shrinking list never strands the user on an empty page.
   useEffect(() => {
     if (!manual) setLocalPagination((p) => ({ ...p, pageIndex: 0 }));
-  }, [search, manual]);
+  }, [search, filteredData, manual]);
   const pageCount = Math.max(1, table.getPageCount());
   useEffect(() => {
     if (pagination.pageIndex >= pageCount && !loading) table.setPageIndex(pageCount - 1);
@@ -176,7 +264,18 @@ export function DataTable<T extends Record<string, any>>({
   const textOf = (c: DataTableColumn<T>) => c.label ?? (typeof c.header === "string" ? c.header : c.id);
 
   const sortable = columns.filter((c) => c.sortable);
-  const cardColumns = columns.filter((c) => !c.hideOnMobile);
+  const shownColumns = columns.filter((c) => !hiddenColumns.includes(c.id));
+  const cardColumns = shownColumns.filter((c) => !c.hideOnMobile);
+  const actionsMenu = (row: T) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" aria-label={t.rowActions}>
+          <MoreHorizontal aria-hidden />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">{rowActions?.(row)}</DropdownMenuContent>
+    </DropdownMenu>
+  );
   const [titleColumn, ...restColumns] = cardColumns;
   const useCards = mobile === "cards";
 
@@ -199,13 +298,70 @@ export function DataTable<T extends Record<string, any>>({
         </div>
       );
     }
+    if (rows.length === 0 && filtering) {
+      return <EmptyState title={t.noResults} action={<Button variant="secondary" onClick={clearFilters}>{t.clearFilters}</Button>} />;
+    }
     if (rows.length === 0) return empty ?? <EmptyState title={t.emptyTitle} description={t.emptyDescription} />;
     return null;
   };
   const status = body();
 
+  const toolbar = (searchable || filterColumns.length > 0 || toolbarActions || columnToggle) && (
+    <FilterBar
+      search={searchable ? search : undefined}
+      onSearchChange={searchable ? (text) => applyFilters(filters, text) : undefined}
+      searchPlaceholder={searchPlaceholder}
+      onClear={anyFilter || (searchable && search) ? clearFilters : undefined}
+      actions={
+        (toolbarActions || columnToggle) && (
+          <>
+            {columnToggle && (
+              // Phone cards already drop columns with hideOnMobile, so the menu would only cost space there.
+              <span className="kr:hidden kr:md:contents">
+                <FilterSelect
+                  label={t.columns}
+                  icon={<Columns3 aria-hidden />}
+                  hideCount
+                  className="kr:w-auto"
+                  options={columns.map((c) => ({ value: c.id, label: textOf(c) }))}
+                  value={shownColumns.map((c) => c.id)}
+                  onChange={(shown) => shown.length > 0 && setHiddenColumns(columns.filter((c) => !shown.includes(c.id)).map((c) => c.id))}
+                />
+              </span>
+            )}
+            {toolbarActions}
+          </>
+        )
+      }
+    >
+      {filterColumns.length > 0 &&
+        filterColumns.map((c) =>
+          c.filter!.type === "date" ? (
+            <DateRangePicker
+              key={c.id}
+              aria-label={textOf(c)}
+              placeholder={textOf(c)}
+              className="kr:w-full"
+              value={filters[c.id] as DateRange | undefined}
+              onChange={(range) => applyFilters({ ...filters, [c.id]: range }, search)}
+            />
+          ) : (
+            <FilterSelect
+              key={c.id}
+              label={textOf(c)}
+              options={c.filter!.options ?? optionsFrom(data, c)}
+              value={(filters[c.id] as string[] | undefined) ?? []}
+              onChange={(values) => applyFilters({ ...filters, [c.id]: values }, search)}
+            />
+          ),
+        )}
+    </FilterBar>
+  );
+
   return (
-    <div className={cn("kr:min-w-0 kr:overflow-hidden kr:rounded-lg kr:border kr:border-line kr:bg-surface kr:text-fg", className)}>
+    <div className={cn("kr:min-w-0", className)}>
+    {toolbar}
+    <div className="kr:min-w-0 kr:overflow-hidden kr:rounded-lg kr:border kr:border-line kr:bg-surface kr:text-fg">
       {selectable && selected.length > 0 && bulkActions && (
         <div className="kr:flex kr:flex-wrap kr:items-center kr:gap-2 kr:border-b kr:border-line kr:bg-accent-soft kr:px-3 kr:py-2">
           <span className="kr:mr-auto kr:text-sm kr:font-medium kr:tabular-nums">
@@ -271,6 +427,7 @@ export function DataTable<T extends Record<string, any>>({
                   ))}
                 </dl>
               </div>
+              {rowActions && <span onClick={(e) => e.stopPropagation()} className="kr:-mt-1 kr:-mr-1 kr:shrink-0">{actionsMenu(row.original)}</span>}
             </li>
           ))}
         </ul>
@@ -285,7 +442,7 @@ export function DataTable<T extends Record<string, any>>({
                   <Checkbox aria-label={t.selectAll} checked={headerCheck} onCheckedChange={(v) => toggleAll(v === true)} className="kr:align-middle" />
                 </th>
               )}
-              {columns.map((c) => {
+              {shownColumns.map((c) => {
                 const sort = sorting.find((s) => s.id === c.id);
                 const Icon = !sort ? ChevronsUpDown : sort.desc ? ArrowDown : ArrowUp;
                 return (
@@ -314,6 +471,7 @@ export function DataTable<T extends Record<string, any>>({
                   </th>
                 );
               })}
+              {rowActions && <th scope="col" className="kr:w-10 kr:px-1"><span className="kr:sr-only">{t.rowActions}</span></th>}
             </tr>
           </thead>
           {!status && (
@@ -333,7 +491,7 @@ export function DataTable<T extends Record<string, any>>({
                       <Checkbox aria-label={t.selectRow} checked={row.getIsSelected()} onCheckedChange={(v) => row.toggleSelected(v === true)} className="kr:align-middle" />
                     </td>
                   )}
-                  {columns.map((c) => (
+                  {shownColumns.map((c) => (
                     <td
                       key={c.id}
                       className={cn("kr:px-3 kr:py-[var(--kora-cell-y)]", c.align === "right" && "kr:text-right kr:tabular-nums")}
@@ -341,6 +499,7 @@ export function DataTable<T extends Record<string, any>>({
                       {value(row, c)}
                     </td>
                   ))}
+                  {rowActions && <td className="kr:px-1 kr:text-right" onClick={(e) => e.stopPropagation()}>{actionsMenu(row.original)}</td>}
                 </tr>
               ))}
             </tbody>
@@ -357,6 +516,7 @@ export function DataTable<T extends Record<string, any>>({
           {pageCount > 1 && <Pagination page={pagination.pageIndex + 1} pageCount={pageCount} onPageChange={(p) => table.setPageIndex(p - 1)} />}
         </div>
       )}
+    </div>
     </div>
   );
 }

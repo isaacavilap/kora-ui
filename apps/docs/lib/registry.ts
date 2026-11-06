@@ -10,12 +10,21 @@ export const componentGroups: ComponentGroup[] = [
     items: [
       {
         slug: "app-shell", name: "AppShell", from: base,
-        description: "The page frame, with Sidebar, SidebarSection, SidebarItem, and Topbar. From 1024px the sidebar is a fixed column. Below that it is a drawer behind a menu button.",
+        description: "The page frame, with Sidebar, SidebarSection, SidebarItem, SidebarGroup, SidebarUser, and Topbar. From 1024px the sidebar is a column that collapses to icons or hides, with its button in the Topbar. Below that it is a drawer behind a menu button. SidebarGroup makes submenus, and groups nest for more levels.",
         props: [
           { name: "sidebar", type: "ReactNode", description: "Usually a Sidebar. It renders in both the column and the drawer." },
-          { name: "topbar", type: "ReactNode", description: "Usually a Topbar, which adds the menu button on small screens." },
+          { name: "topbar", type: "ReactNode", description: "Usually a Topbar, which adds the menu and collapse buttons." },
+          { name: "collapseMode", type: "\"rail\" | \"hidden\"", description: "rail keeps a column of icons. hidden removes the sidebar. Default rail." },
+          { name: "collapsed, onCollapsedChange", type: "boolean, function", description: "Controlled state. Without them, the choice is saved in localStorage." },
+          { name: "defaultCollapsed", type: "boolean", description: "Start state when nothing is saved." },
         ],
       },
+      { slug: "command-palette", name: "CommandPalette", from: base, description: "Search for pages and actions, with its button and with Cmd+K or Ctrl+K.", props: [
+        { name: "items", type: "CommandItem[]", description: "id, label, group, icon, keywords, and href or onSelect." },
+      ] },
+      { slug: "notifications-menu", name: "NotificationsMenu", from: base, description: "Bell with the unread count and a list of notifications. Reading state stays in your code." },
+      { slug: "breadcrumbs", name: "Breadcrumbs", from: base, description: "Page trail. On phones it keeps the last two levels." },
+      { slug: "theme-toggle", name: "ThemeToggle", from: base, description: "Switches light and dark, and saves the choice. Add themeScript to an inline script in the head to apply it before the first paint." },
       { slug: "page-header", name: "PageHeader", from: base, description: "Page title, description, and actions. Actions move under the title on phones." },
       {
         slug: "grid", name: "Grid", from: base,
@@ -32,18 +41,22 @@ export const componentGroups: ComponentGroup[] = [
     items: [
       {
         slug: "data-table", name: "DataTable", from: `${base}/table`,
-        description: "Sorting, search, pagination, selection, and bulk actions, on the client or the server. On phones each row becomes a card, with a sort menu in place of the headers.",
+        description: "Sorting, search, filters, column visibility, row menus, pagination, selection, and bulk actions, on the client or the server. On phones each row becomes a card, with a sort menu in place of the headers.",
         props: [
-          { name: "columns", type: "DataTableColumn<T>[]", description: "id, header, accessor, cell, sortable, align, hideOnMobile." },
+          { name: "columns", type: "DataTableColumn<T>[]", description: "id, header, accessor, cell, sortable, filter, align, hideOnMobile. filter is { type: \"select\", options? } or { type: \"date\" }." },
           { name: "data", type: "T[]", description: "All rows in client mode, or the current page in server mode." },
-          { name: "search", type: "string", description: "Client mode text filter across columns." },
-          { name: "manual", type: "boolean", description: "Server mode. Use it with rowCount, state, and onStateChange." },
+          { name: "searchable", type: "boolean", description: "Adds a search field above the table." },
+          { name: "search", type: "string", description: "Text filter from your own field, if you do not use searchable." },
+          { name: "columnToggle", type: "boolean", description: "Adds a menu to show or hide columns." },
+          { name: "rowActions", type: "(row) => ReactNode", description: "Adds a menu to each row. Return DropdownMenuItem elements." },
+          { name: "toolbarActions", type: "ReactNode", description: "Shown at the end of the filter row." },
+          { name: "manual", type: "boolean", description: "Server mode. Use it with rowCount, state, and onStateChange. The state includes filters and search, and filter options must be passed in the column. Debounce your fetch, because search changes on each keystroke." },
           { name: "selectable", type: "boolean", description: "Adds checkboxes. bulkActions receives the selected rows and a clear function." },
           { name: "loading, error, onRetry, empty", type: "various", description: "Replace the rows with the matching state." },
           { name: "mobile", type: "\"cards\" | \"scroll\"", description: "Phone layout. Default cards." },
         ],
       },
-      { slug: "filter-bar", name: "FilterBar", from: `${base}/table`, description: "Search field, filters, clear button, and actions. Stacks on phones. Filtering stays in your code, so it works in both table modes." },
+      { slug: "filter-bar", name: "FilterBar", from: `${base}/table`, description: "The row above a DataTable, for when you keep filters in your own code, such as in the URL. Search field, filters, clear button, and actions. Stacks on phones. FilterSelect is its multiple choice control." },
       {
         slug: "kpi-card", name: "KpiCard", from: base,
         description: "One headline number with its change and trend.",
@@ -125,7 +138,7 @@ export type TemplateDoc = { slug: string; name: string; description: string; gro
 
 export const templateDocs: TemplateDoc[] = [
   { slug: "dashboard", name: "Analytics dashboard", group: "Dashboards", from: "kora-ui", description: "KPIs, charts, goals, and latest orders in the full app shell." },
-  { slug: "orders", name: "Orders admin", group: "Dashboards", from: "kora-ui/table", description: "List with search, filter, sort, row details, create, and bulk delete." },
+  { slug: "orders", name: "Orders admin", group: "Dashboards", from: "kora-ui/table", description: "List with views, search, status and date filters, column menu, row menu, details, create, and bulk delete." },
   { slug: "login", name: "Sign in", group: "Access", from: "kora-ui/auth", description: "Email and password, providers, and sign-in link. Use the password \"wrong\" to see the failure state." },
   { slug: "login-split", name: "Sign in with brand panel", group: "Access", from: "kora-ui/auth", description: "Same screen with a brand panel from 1024px." },
   { slug: "register", name: "Create account", group: "Access", from: "kora-ui/auth", description: "Name, email, password, and terms." },

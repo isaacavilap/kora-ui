@@ -1,31 +1,84 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useId, useMemo, useState } from "react";
 import type { CSSProperties, HTMLAttributes, ReactNode } from "react";
-import { Dialog as D } from "radix-ui";
-import { Menu } from "lucide-react";
-import { Button, focusRing } from "./button";
+import { Dialog as D, Popover } from "radix-ui";
+import { ChevronRight, Menu, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Button, focusRing, popoverClass } from "./button";
 import { Badge } from "./display";
+import { Tooltip } from "./overlay";
 import { cn, KoraLink, useKora, useLabels } from "./provider";
 
-const ShellContext = createContext<{ openDrawer?: () => void; closeDrawer?: () => void; hasSidebar: boolean }>({ hasSidebar: false });
+const COLLAPSED_KEY = "kora-sidebar-collapsed";
+
+type Shell = { openDrawer?: () => void; closeDrawer?: () => void; toggleCollapsed?: () => void; collapsed: boolean; hasSidebar: boolean };
+const ShellContext = createContext<Shell>({ collapsed: false, hasSidebar: false });
+/** True only inside the desktop icon rail. The phone drawer always shows full labels. */
+const RailContext = createContext(false);
+/** Lets an active item tell the groups around it, so they open and show that they hold the current page. */
+const noReport = () => {};
+const GroupContext = createContext<(delta: number) => void>(noReport);
+
+/** For custom topbars and sidebar footers: `toggle` works on desktop, and `rail` is true in the icon rail. */
+export function useSidebar() {
+  const { collapsed, toggleCollapsed } = useContext(ShellContext);
+  return { collapsed, toggle: toggleCollapsed, rail: useContext(RailContext) };
+}
 
 /**
- * Page frame. From 1024px the sidebar is a fixed column.
+ * Page frame. From 1024px the sidebar is a fixed column that collapses to icons or hides.
  * Below that it becomes a drawer, opened with the Topbar menu button.
  */
-export function AppShell({ sidebar, topbar, children, className }: {
+export function AppShell({ sidebar, topbar, collapseMode = "rail", collapsed: controlled, defaultCollapsed = false, onCollapsedChange, children, className }: {
   sidebar?: ReactNode;
   topbar?: ReactNode;
+  /** `rail` keeps a column of icons when collapsed. `hidden` removes the sidebar. */
+  collapseMode?: "rail" | "hidden";
+  /** Controlled state. Without it, the choice is saved in localStorage. */
+  collapsed?: boolean;
+  defaultCollapsed?: boolean;
+  onCollapsedChange?: (collapsed: boolean) => void;
   children: ReactNode;
   className?: string;
 }) {
   const [drawer, setDrawer] = useState(false);
+  const [saved, setSaved] = useState(defaultCollapsed);
   const t = useLabels();
+  const isControlled = controlled !== undefined;
+  const collapsed = controlled ?? saved;
+
+  // ponytail: read after mount so server and client markup match. A saved collapse appears one frame late.
+  useEffect(() => {
+    if (isControlled) return;
+    try {
+      const value = localStorage.getItem(COLLAPSED_KEY);
+      if (value !== null) setSaved(value === "1");
+    } catch {} // Storage can be blocked. The sidebar still works for this page view.
+  }, [isControlled]);
+
+  const toggleCollapsed = () => {
+    const next = !collapsed;
+    setSaved(next);
+    onCollapsedChange?.(next);
+    if (isControlled) return;
+    try {
+      localStorage.setItem(COLLAPSED_KEY, next ? "1" : "0");
+    } catch {}
+  };
+
+  const rail = collapsed && collapseMode === "rail";
   return (
-    <ShellContext.Provider value={{ openDrawer: () => setDrawer(true), closeDrawer: () => setDrawer(false), hasSidebar: Boolean(sidebar) }}>
+    <ShellContext.Provider value={{ openDrawer: () => setDrawer(true), closeDrawer: () => setDrawer(false), toggleCollapsed, collapsed, hasSidebar: Boolean(sidebar) }}>
       <div className={cn("kr:flex kr:min-h-dvh kr:bg-bg kr:text-fg", className)}>
         {sidebar && (
           <>
-            <aside className="kr:sticky kr:top-0 kr:hidden kr:h-dvh kr:w-60 kr:shrink-0 kr:border-r kr:border-line kr:bg-surface kr:lg:block">{sidebar}</aside>
+            <aside
+              className={cn(
+                "kr:sticky kr:top-0 kr:hidden kr:h-dvh kr:shrink-0 kr:overflow-hidden kr:border-r kr:border-line kr:bg-surface kr:transition-[width] kr:duration-150",
+                rail ? "kr:w-14" : "kr:w-60",
+                !(collapsed && collapseMode === "hidden") && "kr:lg:block",
+              )}
+            >
+              <RailContext.Provider value={rail}>{sidebar}</RailContext.Provider>
+            </aside>
             <D.Root open={drawer} onOpenChange={setDrawer}>
               <D.Portal>
                 <D.Overlay className="kr:fixed kr:inset-0 kr:z-50 kr:bg-black/50 kr:animate-[kr-fade-in_150ms_ease-out] kr:lg:hidden" />
@@ -49,6 +102,9 @@ export function AppShell({ sidebar, topbar, children, className }: {
   );
 }
 
+const initial = (text: unknown) => (typeof text === "string" && text ? text[0]!.toUpperCase() : "•");
+
+/** In the icon rail `footer` gets only 56px. SidebarUser adapts by itself. For other content, use `useSidebar`. */
 export function Sidebar({ brand, footer, children, className }: {
   brand?: { name: string; logo?: ReactNode };
   footer?: ReactNode;
@@ -56,29 +112,41 @@ export function Sidebar({ brand, footer, children, className }: {
   className?: string;
 }) {
   const fallback = useKora().brand;
+  const rail = useContext(RailContext);
   const b = brand ?? fallback;
   return (
     <div className={cn("kr:flex kr:h-full kr:flex-col", className)}>
       {b && (
-        <div className="kr:flex kr:h-14 kr:shrink-0 kr:items-center kr:gap-2 kr:px-4 kr:text-sm kr:font-semibold">
-          {b.logo}
-          <span className="kr:truncate">{b.name}</span>
+        <div className={cn("kr:flex kr:h-14 kr:shrink-0 kr:items-center kr:gap-2 kr:text-sm kr:font-semibold", rail ? "kr:justify-center" : "kr:px-4")}>
+          {b.logo ?? (rail && <span aria-hidden>{initial(b.name)}</span>)}
+          <span className={rail ? "kr:sr-only" : "kr:truncate"}>{b.name}</span>
         </div>
       )}
-      <nav className="kr:min-h-0 kr:flex-1 kr:space-y-5 kr:overflow-y-auto kr:px-2 kr:py-2">{children}</nav>
-      {footer && <div className="kr:shrink-0 kr:border-t kr:border-line kr:p-2">{footer}</div>}
+      <nav className="kr:min-h-0 kr:flex-1 kr:space-y-5 kr:overflow-x-hidden kr:overflow-y-auto kr:px-2 kr:py-2">{children}</nav>
+      {footer && <div className="kr:shrink-0 kr:overflow-hidden kr:border-t kr:border-line kr:p-2">{footer}</div>}
     </div>
   );
 }
 
 export function SidebarSection({ label, children }: { label?: ReactNode; children: ReactNode }) {
+  const rail = useContext(RailContext);
   return (
     <div>
-      {label && <p className="kr:px-2 kr:pb-1 kr:text-xs kr:text-muted">{label}</p>}
+      {label && !rail && <p className="kr:px-2 kr:pb-1 kr:text-xs kr:text-muted">{label}</p>}
       <ul className="kr:space-y-0.5">{children}</ul>
     </div>
   );
 }
+
+const rowClass = (rail: boolean) =>
+  cn(
+    "kr:relative kr:flex kr:h-11 kr:items-center kr:gap-2.5 kr:rounded-md kr:text-sm kr:transition-colors kr:lg:h-9 kr:[&_svg]:size-4 kr:[&_svg]:shrink-0",
+    rail ? "kr:justify-center" : "kr:px-2",
+    focusRing,
+    "kr:focus-visible:-outline-offset-2",
+  );
+const activeRow = "kr:bg-accent-soft kr:font-medium kr:text-accent";
+const idleRow = "kr:text-muted kr:hover:bg-surface-2 kr:hover:text-fg";
 
 export function SidebarItem({ href, icon, active, badge, onClick, children }: {
   href: string;
@@ -89,39 +157,154 @@ export function SidebarItem({ href, icon, active, badge, onClick, children }: {
   children: ReactNode;
 }) {
   const { closeDrawer } = useContext(ShellContext);
+  const rail = useContext(RailContext);
+  const report = useContext(GroupContext);
+  useEffect(() => {
+    if (!active) return;
+    report(1);
+    return () => report(-1);
+  }, [active, report]);
+
+  const link = (
+    <KoraLink
+      href={href}
+      aria-current={active ? "page" : undefined}
+      onClick={() => {
+        onClick?.();
+        closeDrawer?.();
+      }}
+      className={cn(rowClass(rail), active ? activeRow : idleRow)}
+    >
+      {icon ?? (rail && <span aria-hidden className="kr:text-xs kr:font-medium">{initial(children)}</span>)}
+      <span className={rail ? "kr:sr-only" : "kr:min-w-0 kr:flex-1 kr:truncate"}>{children}</span>
+      {badge != null &&
+        (rail ? (
+          <>
+            <span className="kr:sr-only">({badge})</span>
+            <span aria-hidden className="kr:absolute kr:top-1.5 kr:right-1.5 kr:size-1.5 kr:rounded-full kr:bg-accent" />
+          </>
+        ) : (
+          <Badge>{badge}</Badge>
+        ))}
+    </KoraLink>
+  );
   return (
     <li>
-        <KoraLink
-          href={href}
-          aria-current={active ? "page" : undefined}
-          onClick={() => {
-            onClick?.();
-            closeDrawer?.();
-          }}
-          className={cn(
-            "kr:flex kr:h-11 kr:items-center kr:gap-2.5 kr:rounded-md kr:px-2 kr:text-sm kr:transition-colors kr:lg:h-9 kr:[&_svg]:size-4 kr:[&_svg]:shrink-0",
-            active ? "kr:bg-accent-soft kr:font-medium kr:text-accent" : "kr:text-muted kr:hover:bg-surface-2 kr:hover:text-fg",
-            focusRing,
-            "kr:focus-visible:-outline-offset-2",
-          )}
-        >
-          {icon}
-          <span className="kr:min-w-0 kr:flex-1 kr:truncate">{children}</span>
-          {badge != null && <Badge>{badge}</Badge>}
-        </KoraLink>
+      {rail ? (
+        <Tooltip content={children} side="right">
+          <span className="kr:block">{link}</span>
+        </Tooltip>
+      ) : (
+        link
+      )}
+    </li>
+  );
+}
+
+/**
+ * A menu level that opens and closes. Nest groups for more levels.
+ * It opens by itself when it holds the active item. In the icon rail, it opens as a side menu.
+ */
+export function SidebarGroup({ label, icon, defaultOpen = false, children }: {
+  label: ReactNode;
+  icon?: ReactNode;
+  defaultOpen?: boolean;
+  children: ReactNode;
+}) {
+  const shell = useContext(ShellContext);
+  const rail = useContext(RailContext);
+  const report = useContext(GroupContext);
+  const [open, setOpen] = useState(defaultOpen);
+  const [flyout, setFlyout] = useState(false);
+  const [activeItems, setActiveItems] = useState(0);
+  const listId = useId();
+  const hasActive = activeItems > 0;
+
+  const reportUp = useCallback(
+    (delta: number) => {
+      setActiveItems((n) => n + delta);
+      report(delta);
+    },
+    [report],
+  );
+  useEffect(() => {
+    if (hasActive) setOpen(true);
+  }, [hasActive]);
+
+  const flyoutShell = useMemo(() => ({ ...shell, closeDrawer: () => setFlyout(false) }), [shell]);
+
+  // This hidden list stays mounted in every mode, so active items below can always report.
+  const list = (
+    <GroupContext.Provider value={reportUp}>
+      <RailContext.Provider value={false}>
+        <ul id={listId} hidden={rail || !open} className="kr:mt-0.5 kr:ml-4 kr:space-y-0.5 kr:border-l kr:border-line kr:pl-2">
+          {children}
+        </ul>
+      </RailContext.Provider>
+    </GroupContext.Provider>
+  );
+
+  if (rail) {
+    return (
+      <li>
+        <Popover.Root open={flyout} onOpenChange={setFlyout}>
+          <Popover.Trigger className={cn(rowClass(true), "kr:w-full kr:cursor-pointer", hasActive ? activeRow : idleRow)}>
+            {icon ?? <span aria-hidden className="kr:text-xs kr:font-medium">{initial(label)}</span>}
+            <span className="kr:sr-only">{label}</span>
+          </Popover.Trigger>
+          <Popover.Portal>
+            <Popover.Content side="right" align="start" sideOffset={8} collisionPadding={8} className={cn(popoverClass, "kr:max-h-[80dvh] kr:w-56 kr:overflow-y-auto kr:p-1")}>
+              <p className="kr:px-2 kr:py-1.5 kr:text-xs kr:text-muted">{label}</p>
+              <ShellContext.Provider value={flyoutShell}>
+                <GroupContext.Provider value={noReport}>
+                  <RailContext.Provider value={false}>
+                    <ul className="kr:space-y-0.5">{children}</ul>
+                  </RailContext.Provider>
+                </GroupContext.Provider>
+              </ShellContext.Provider>
+            </Popover.Content>
+          </Popover.Portal>
+        </Popover.Root>
+        {list}
+      </li>
+    );
+  }
+
+  return (
+    <li>
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={listId}
+        onClick={() => setOpen(!open)}
+        className={cn(rowClass(false), "kr:w-full kr:cursor-pointer kr:text-left", hasActive && !open ? activeRow : hasActive ? "kr:font-medium kr:text-fg kr:hover:bg-surface-2" : idleRow)}
+      >
+        {icon}
+        <span className="kr:min-w-0 kr:flex-1 kr:truncate">{label}</span>
+        <ChevronRight aria-hidden className={cn("kr:transition-transform", open && "kr:rotate-90")} />
+      </button>
+      {list}
     </li>
   );
 }
 
 export function Topbar({ children, className }: { children?: ReactNode; className?: string }) {
-  const { openDrawer, hasSidebar } = useContext(ShellContext);
+  const { openDrawer, toggleCollapsed, collapsed, hasSidebar } = useContext(ShellContext);
   const t = useLabels();
   return (
     <header className={cn("kr:sticky kr:top-0 kr:z-40 kr:flex kr:h-14 kr:shrink-0 kr:items-center kr:gap-2 kr:border-b kr:border-line kr:bg-surface kr:px-2 kr:lg:px-6", className)}>
       {hasSidebar && (
-        <Button variant="ghost" size="icon" aria-label={t.menu} onClick={openDrawer} className="kr:lg:hidden">
-          <Menu aria-hidden />
-        </Button>
+        <>
+          <Button variant="ghost" size="icon" aria-label={t.menu} onClick={openDrawer} className="kr:lg:hidden">
+            <Menu aria-hidden />
+          </Button>
+          {/* The wrapper hides the button, because `hidden` loses to the inline-flex of Button in the compiled CSS. */}
+          <span className="kr:hidden kr:lg:contents">
+            <Button variant="ghost" size="icon" aria-label={collapsed ? t.expandSidebar : t.collapseSidebar} aria-expanded={!collapsed} onClick={toggleCollapsed}>
+              {collapsed ? <PanelLeftOpen aria-hidden /> : <PanelLeftClose aria-hidden />}
+            </Button>
+          </span>
+        </>
       )}
       <div className="kr:flex kr:min-w-0 kr:flex-1 kr:items-center kr:gap-2 kr:pr-2 kr:lg:pr-0">{children}</div>
     </header>

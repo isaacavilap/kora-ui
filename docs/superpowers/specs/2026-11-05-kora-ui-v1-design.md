@@ -65,7 +65,7 @@ Dirección de dependencias: `components` no importa a nadie. `table` y `charts` 
 
 ## Catálogo
 
-**Layout:** `AppShell`, `Sidebar`, `Topbar`, `PageHeader`, `Grid`.
+**Layout:** `AppShell`, `Sidebar`, `SidebarGroup`, `SidebarUser`, `Topbar`, `PageHeader`, `Grid`, `Breadcrumbs`, `CommandPalette`, `NotificationsMenu`, `ThemeToggle`.
 
 **Base:** `Button`, `Badge`, `Card`, `Alert`, `Avatar`, `Separator`, `Tabs`, `Dialog`, `Sheet`, `DropdownMenu`, `Tooltip`, `Toast`, `Skeleton`, `EmptyState`, `Pagination`, `Stepper`.
 
