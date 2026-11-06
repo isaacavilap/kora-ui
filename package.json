@@ -9,13 +9,19 @@
   ],
   "scripts": {
     "build": "npm run build -w kora-ui",
-    "build:lib": "npm run build -w kora-ui",
+    "build:lib": "npm run build -w kora-ui && npm run build -w kora-ui-mcp",
     "build:docs": "npm run build -w docs",
     "dev:lib": "npm run dev -w kora-ui",
     "dev:docs": "npm run dev -w docs",
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm test --workspaces --if-present",
+    "version": "changeset version && npm install --package-lock-only",
+    "release": "npm run build:lib && changeset publish"
   },
   "engines": {
     "node": ">=20"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^3.0.3"
   }
 }

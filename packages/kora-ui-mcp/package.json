@@ -1,0 +1,32 @@
+{
+  "name": "kora-ui-mcp",
+  "version": "1.0.0-alpha.0",
+  "description": "MCP server that gives AI assistants the kora-ui components, props, examples, and templates.",
+  "license": "MIT",
+  "author": "Isaac Avila",
+  "homepage": "https://kora-ui.istmocode.com/ai",
+  "repository": { "type": "git", "url": "git+https://github.com/isaacavilap/kora-ui.git", "directory": "packages/kora-ui-mcp" },
+  "keywords": ["mcp", "model-context-protocol", "kora-ui", "react", "dashboard", "ai"],
+  "type": "module",
+  "bin": { "kora-ui-mcp": "./dist/cli.js" },
+  "exports": { ".": { "types": "./dist/server.d.ts", "import": "./dist/server.js" } },
+  "types": "./dist/server.d.ts",
+  "files": ["dist", "README.md"],
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "catalog": "node scripts/catalog.mjs",
+    "build": "npm run catalog && tsup",
+    "typecheck": "npm run catalog && tsc --noEmit",
+    "test": "node --test test/server.test.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "^2.4.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "esbuild": "*",
+    "tsup": "*",
+    "typescript": "^5"
+  }
+}

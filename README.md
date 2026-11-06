@@ -37,11 +37,21 @@ Screens draw the interface and validate format. Your functions handle the backen
 
 Sessions, tokens, permissions, and real validation stay in your backend.
 
+## Start faster
+
+- [kora-starter](https://github.com/isaacavilap/kora-starter): base project with Next.js and kora-ui ready to run.
+- [kora-ui-mcp](packages/kora-ui-mcp): connects Claude, ChatGPT, Gemini, and other assistants to the components and templates.
+
+## Versions
+
+See [VERSIONING.md](VERSIONING.md).
+
 ## Repository
 
 | Path | Contents |
 |---|---|
 | `packages/kora-ui` | The npm package |
+| `packages/kora-ui-mcp` | MCP server for AI assistants |
 | `apps/docs` | Docs site, with the Components and Templates sections |
 
 ```bash
