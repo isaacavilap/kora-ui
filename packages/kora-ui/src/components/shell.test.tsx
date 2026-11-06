@@ -106,6 +106,22 @@ describe("BottomNav", () => {
   });
 });
 
+describe("BottomNav current page", () => {
+  const nav = (active: boolean) => shell(false, { bottomNav: <BottomNav items={[{ href: "/home", label: "Inicio", icon: null, active }]} /> });
+
+  it("colors the active item, with no muted class to override it", () => {
+    render(nav(true));
+    const link = screen.getByRole("navigation", { name: "Main" }).querySelector("[aria-current=page]")!;
+    expect(link.className).toContain("kr:text-accent");
+    expect(link.className).not.toContain("kr:text-muted");
+  });
+
+  it("marks More for a page outside the bottom menu", () => {
+    render(nav(false));
+    expect(screen.getByRole("button", { name: "More" }).getAttribute("aria-current")).toBe("true");
+  });
+});
+
 describe("SaveBar", () => {
   it("shows only with unsaved changes", async () => {
     const onDiscard = vi.fn();

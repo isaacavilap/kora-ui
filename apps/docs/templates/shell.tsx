@@ -53,7 +53,7 @@ export function DemoShell({ page, title, children }: { page: string; title: stri
   const bottomItems = company
     ? [
         { href: "/preview/home", label: "Today", icon: <Home aria-hidden />, active: page === "home" },
-        ...(has("requests") ? [{ href: "/preview/workflow", label: "Requests", icon: <ClipboardList aria-hidden />, active: page === "workflow" || page === "record-detail" || page === "record-form", badge: company.open }] : []),
+        ...(has("requests") ? [{ href: "/preview/workflow", label: "Requests", icon: <ClipboardList aria-hidden />, active: page === "workflow" || page === "record-detail" || page === "record-form" }] : []),
         ...(has("agenda") ? [{ href: "/preview/agenda", label: "Agenda", icon: <CalendarDays aria-hidden />, active: page === "agenda" }] : has("assets") ? [{ href: "/preview/catalog", label: "Assets", icon: <Package aria-hidden />, active: page === "catalog" }] : []),
         { href: "/preview/report", label: "Report", icon: <BarChart3 aria-hidden />, active: page === "report" },
       ]

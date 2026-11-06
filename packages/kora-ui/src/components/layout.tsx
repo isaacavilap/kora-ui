@@ -398,23 +398,33 @@ export type BottomNavItem = { href: string; label: string; icon: ReactNode; acti
 export function BottomNav({ items, className }: { items: BottomNavItem[]; className?: string }) {
   const t = useLabels();
   const { openDrawer, hasSidebar } = useContext(ShellContext);
-  const cell = cn("kr:relative kr:flex kr:min-h-14 kr:min-w-0 kr:cursor-pointer kr:flex-col kr:items-center kr:justify-center kr:gap-0.5 kr:px-1 kr:text-[0.6875rem] kr:leading-4 kr:text-muted kr:outline-none kr:active:bg-surface-2 kr:focus-visible:ring-2 kr:focus-visible:ring-inset kr:focus-visible:ring-accent kr:[&_svg]:size-5 kr:[&_svg]:shrink-0");
+  // A page outside the bottom menu lives under More, so one button always marks where you are.
+  const inMore = hasSidebar && !items.some((item) => item.active);
+  const state = (active?: boolean) => (active ? "kr:font-semibold kr:text-accent" : "kr:text-muted");
+  const icon = (active: boolean | undefined, node: ReactNode) => (
+    <span className={cn("kr:flex kr:h-6 kr:w-12 kr:items-center kr:justify-center kr:rounded-full", active && "kr:bg-accent-soft")}>{node}</span>
+  );
+  const cell = cn("kr:relative kr:flex kr:min-h-14 kr:min-w-0 kr:cursor-pointer kr:flex-col kr:items-center kr:justify-center kr:gap-0.5 kr:px-1 kr:text-[0.6875rem] kr:leading-4 kr:outline-none kr:active:bg-surface-2 kr:focus-visible:ring-2 kr:focus-visible:ring-inset kr:focus-visible:ring-accent kr:[&_svg]:size-5 kr:[&_svg]:shrink-0");
   return (
     <nav aria-label={t.primaryNav} className={cn("kr:fixed kr:inset-x-0 kr:bottom-0 kr:z-40 kr:border-t kr:border-line kr:bg-surface kr:pb-[env(safe-area-inset-bottom)] kr:lg:hidden", className)}>
       <ul className="kr:grid kr:auto-cols-fr kr:grid-flow-col">
         {items.map((item) => (
           <li key={item.href} className="kr:min-w-0">
-            <KoraLink href={item.href} aria-current={item.active ? "page" : undefined} className={cn(cell, item.active && "kr:font-medium kr:text-accent")}>
-              {item.icon}
+            <KoraLink href={item.href} aria-current={item.active ? "page" : undefined} className={cn(cell, state(item.active))}>
+              <span className="kr:relative kr:flex">
+                {icon(item.active, item.icon)}
+                {item.badge !== undefined && (
+                  <span className="kr:absolute kr:-top-1 kr:left-1/2 kr:ml-1.5 kr:flex kr:h-4 kr:min-w-4 kr:items-center kr:justify-center kr:rounded-full kr:bg-accent kr:px-1 kr:text-[0.625rem] kr:leading-none kr:font-medium kr:text-accent-fg">{item.badge}</span>
+                )}
+              </span>
               <span className="kr:w-full kr:truncate kr:text-center">{item.label}</span>
-              {item.badge !== undefined && <Badge className="kr:absolute kr:top-1 kr:left-1/2 kr:ml-1 kr:px-1 kr:text-[0.625rem] kr:leading-3.5">{item.badge}</Badge>}
             </KoraLink>
           </li>
         ))}
         {hasSidebar && (
           <li className="kr:min-w-0">
-            <button type="button" aria-haspopup="dialog" onClick={openDrawer} className={cn(cell, "kr:w-full")}>
-              <MoreHorizontal aria-hidden />
+            <button type="button" aria-haspopup="dialog" aria-current={inMore ? "true" : undefined} onClick={openDrawer} className={cn(cell, "kr:w-full", state(inMore))}>
+              {icon(inMore, <MoreHorizontal aria-hidden />)}
               <span>{t.more}</span>
             </button>
           </li>
