@@ -2,7 +2,8 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
-const allowed = new Set(["html", "head", "body", "svg", "path", "rect", "circle", "g"]);
+// style: CSS that a demo injects on purpose (themeColorsCss); kora-ui has no component for it.
+const allowed = new Set(["html", "head", "body", "svg", "path", "rect", "circle", "g", "style"]);
 
 function files(dir) {
   return readdirSync(dir).flatMap((name) => {

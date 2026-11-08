@@ -1,23 +1,18 @@
 "use client";
 import { useState } from "react";
-import { Button, PdfViewer } from "kora-ui";
+import { Button, FileDrop, Inline, PdfViewer, Stack } from "kora-ui";
 
 const SAMPLE = "/media/ejemplo.pdf";
 
 export default function Demo() {
   const [file, setFile] = useState<string | File>(SAMPLE);
   return (
-    <div className="flex w-full max-w-2xl flex-col gap-3">
-      <div className="flex flex-wrap gap-2">
+    <Stack gap="sm" className="w-full max-w-2xl">
+      <Inline>
         <Button variant="secondary" size="sm" onClick={() => setFile(SAMPLE)}>Ejemplo</Button>
-        <Button asChild variant="secondary" size="sm">
-          <label className="cursor-pointer">
-            Elegir un PDF
-            <input type="file" accept="application/pdf" className="sr-only" onChange={(e) => e.target.files?.[0] && setFile(e.target.files[0])} />
-          </label>
-        </Button>
-      </div>
+        <FileDrop accept={["application/pdf"]} title="Elegir un PDF" camera={false} onFile={setFile} className="min-w-0 flex-1" />
+      </Inline>
       <PdfViewer file={file} className="h-[32rem]" />
-    </div>
+    </Stack>
   );
 }

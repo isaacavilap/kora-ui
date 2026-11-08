@@ -7,7 +7,7 @@ export default function Demo() {
   return (
     <Stack>
       <EmojiPicker onSelect={(emoji) => setPicked((p) => p + emoji)} />
-      <Text tone="muted">Picked: <span className="text-xl">{picked || "none yet"}</span></Text>
+      <Text tone="muted">Picked: <Text inline size="lg">{picked || "none yet"}</Text></Text>
     </Stack>
   );
 }

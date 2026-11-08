@@ -1,5 +1,5 @@
 "use client";
-import { SharePreview, SharePreviews } from "kora-ui";
+import { Grid, SharePreview, SharePreviews, Stack, Text } from "kora-ui";
 
 const site = {
   url: "https://speedcarservices.com/servicios/frenos",
@@ -11,15 +11,15 @@ const site = {
 
 export default function Demo() {
   return (
-    <div className="space-y-6">
+    <Stack gap="md">
       <SharePreviews {...site} text="Agenda tu revisión de frenos esta semana." />
-      <div className="space-y-2">
-        <p className="text-sm text-[var(--kora-muted)]">Sin imagen, y X con la tarjeta pequeña (summary)</p>
-        <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 320px), 1fr))", alignItems: "start" }}>
+      <Stack gap="sm">
+        <Text tone="muted">Sin imagen, y X con la tarjeta pequeña (summary)</Text>
+        <Grid min="320px" className="items-start">
           <SharePreview network="whatsapp" {...site} image={undefined} />
           <SharePreview network="x" {...site} card="summary" />
-        </div>
-      </div>
-    </div>
+        </Grid>
+      </Stack>
+    </Stack>
   );
 }
