@@ -1,6 +1,6 @@
 {
   "name": "kora-ui-mcp",
-  "version": "1.0.0-alpha.0",
+  "version": "1.0.0-next.1",
   "description": "MCP server that gives AI assistants the kora-ui components, props, examples, and templates.",
   "license": "MIT",
   "author": "Isaac Avila",

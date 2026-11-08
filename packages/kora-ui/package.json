@@ -1,6 +1,6 @@
 {
   "name": "kora-ui",
-  "version": "1.0.0-alpha.0",
+  "version": "1.0.0-next.1",
   "description": "React UI library for building admin and analytics dashboards: layout, data tables, charts, and ready-made screens.",
   "author": {
     "name": "Isaac Avila",
