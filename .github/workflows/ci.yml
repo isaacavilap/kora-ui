@@ -16,5 +16,6 @@ jobs:
       - run: npm ci
       - run: npm run build:lib
       - run: npm run typecheck
+      - run: npm run check:tags
       - run: npm test
       - run: npm run build:docs

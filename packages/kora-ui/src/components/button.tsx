@@ -13,6 +13,8 @@ const variants = {
 const sizes = {
   md: "kr:h-[var(--kora-control-h)] kr:px-3.5 kr:text-sm",
   sm: "kr:h-[calc(var(--kora-control-h)-0.5rem)] kr:px-2.5 kr:text-[0.8125rem]",
+  /** Calls to action on marketing pages. */
+  lg: "kr:h-[calc(var(--kora-control-h)+0.5rem)] kr:px-5 kr:text-base",
   icon: "kr:size-[var(--kora-control-h)] kr:shrink-0",
 };
 

@@ -1,5 +1,5 @@
 import { createContext, forwardRef, useContext, useId, useRef, useState } from "react";
-import type { ComponentProps, InputHTMLAttributes, ReactNode, TextareaHTMLAttributes } from "react";
+import type { ComponentProps, FormHTMLAttributes, HTMLAttributes, InputHTMLAttributes, ReactNode, TextareaHTMLAttributes } from "react";
 import { Checkbox as RadixCheckbox, Select as RadixSelect, Switch as RadixSwitch } from "radix-ui";
 import { Check, ChevronDown, Minus, Upload } from "lucide-react";
 import { cn, useLabels } from "./provider";
@@ -63,15 +63,42 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<H
 
 export type SelectOption = { value: string; label: ReactNode; disabled?: boolean };
 
-export function Select({ options, placeholder, className, id, "aria-label": ariaLabel, ...props }: ComponentProps<typeof RadixSelect.Root> & {
+export function Select({ options, placeholder, className, id, "aria-label": ariaLabel, native, ...props }: ComponentProps<typeof RadixSelect.Root> & {
   options: SelectOption[];
   placeholder?: string;
   className?: string;
   id?: string;
   "aria-label"?: string;
+  /** Uses the select of the browser, with the system list on phones. Labels must be plain text. */
+  native?: boolean;
 }) {
   const t = useLabels();
   const fieldProps = useFieldProps({ id });
+  if (native) {
+    const { value, defaultValue, onValueChange, name, required, disabled } = props;
+    // A controlled select with no value yet must stay controlled, so it gets an empty value.
+    const state = "value" in props ? { value: value ?? "" } : { defaultValue: defaultValue ?? "" };
+    return (
+      <span className={cn("kr:relative kr:block", className)}>
+        <select
+          {...fieldProps}
+          {...state}
+          aria-label={ariaLabel}
+          name={name}
+          required={required}
+          disabled={disabled}
+          onChange={(e) => onValueChange?.(e.target.value)}
+          className={cn(controlClass, "kr:h-[var(--kora-control-h)] kr:cursor-pointer kr:appearance-none kr:pr-8 kr:has-[option:checked:disabled]:text-muted")}
+        >
+          <option value="" disabled hidden>{placeholder ?? t.selectPlaceholder}</option>
+          {options.map((o) => (
+            <option key={o.value} value={o.value} disabled={o.disabled}>{o.label}</option>
+          ))}
+        </select>
+        <ChevronDown aria-hidden className="kr:pointer-events-none kr:absolute kr:top-1/2 kr:right-2.5 kr:size-4 kr:-translate-y-1/2 kr:text-muted" />
+      </span>
+    );
+  }
   return (
     <RadixSelect.Root {...props}>
       <RadixSelect.Trigger
@@ -152,7 +179,7 @@ export function Switch({ label, className, ...props }: ComponentProps<typeof Rad
       )}
       {...props}
     >
-      <RadixSwitch.Thumb className="kr:block kr:size-5 kr:rounded-full kr:bg-white kr:transition-transform kr:data-[state=checked]:translate-x-4" />
+      <RadixSwitch.Thumb className="kr:block kr:size-5 kr:rounded-full kr:bg-white kr:shadow-sm kr:transition-transform kr:data-[state=checked]:translate-x-4 kr:data-[state=checked]:bg-accent-fg" />
     </RadixSwitch.Root>
   );
   return label ? (
@@ -269,4 +296,14 @@ export function FileDropzone({ onFiles, accept, multiple, hint, disabled, classN
       />
     </label>
   );
+}
+
+/** A form with the standard space between fields. */
+export function Form({ className, ...props }: FormHTMLAttributes<HTMLFormElement>) {
+  return <form className={cn("kr:grid kr:gap-4", className)} {...props} />;
+}
+
+/** The buttons at the end of a form. They fill the width on phones. */
+export function FormActions({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
+  return <div className={cn("kr:flex kr:flex-col-reverse kr:gap-2 kr:md:flex-row kr:md:justify-end", className)} {...props} />;
 }

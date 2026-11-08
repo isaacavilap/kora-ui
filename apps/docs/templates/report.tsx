@@ -1,5 +1,5 @@
 "use client";
-import { Alert, Card, CardContent, CardHeader, ChartCard, DescriptionList, Grid, KpiCard, PageHeader, RankedList } from "kora-ui";
+import { Alert, Card, CardContent, CardHeader, ChartCard, DescriptionList, Grid, Heading, KpiCard, PageHeader, RankedList, Stack } from "kora-ui";
 import { BarChart } from "kora-ui/charts";
 import { DataTable, type DataTableColumn } from "kora-ui/table";
 import { money, requests, revenue, type WorkRequest } from "@/lib/demo-data";
@@ -27,14 +27,14 @@ export default function Template() {
     <DemoShell page="report" title="Monthly report">
       <PageHeader title="Monthly report" description="Costs and work for the last closed month, by location." />
       <Alert tone="warning" title="October is not closed yet" className="mb-4">These numbers can change until every request is reviewed.</Alert>
-      <div className="grid gap-[var(--kora-gap)]">
+      <Stack>
         <Grid min="10.5rem">
           <KpiCard label="Spent" value={money(spent)} delta={3.1} invertDelta deltaLabel="vs September" />
           <KpiCard label="Requests" value={requests.length} delta={-4} deltaLabel="vs September" />
           <KpiCard label="Average per request" value={money(Math.round(spent / requests.length))} />
         </Grid>
-        <div className="min-w-0">
-          <h2 className="mb-2 text-sm font-semibold">By location</h2>
+        <Stack gap="none">
+          <Heading className="mb-2">By location</Heading>
           <DataTable
             columns={columns}
             data={rows}
@@ -46,7 +46,7 @@ export default function Template() {
               />
             )}
           />
-        </div>
+        </Stack>
         <Grid cols="2fr 1fr">
           <ChartCard title="Costs by month" description="This year">
             <BarChart summary="Costs by month this year" data={revenue} x="month" valueFormat={money} height={260} series={[{ key: "costs", label: "Costs" }]} />
@@ -56,7 +56,7 @@ export default function Template() {
             <CardContent><RankedList items={assigneeTotals} /></CardContent>
           </Card>
         </Grid>
-      </div>
+      </Stack>
     </DemoShell>
   );
 }

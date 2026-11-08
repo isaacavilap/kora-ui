@@ -1,5 +1,5 @@
 "use client";
-import { AlertList, Badge, Button, Card, CardContent, CardHeader, Grid, KpiCard, PageHeader, QuickActions, StageCounters, Timeline } from "kora-ui";
+import { AlertList, Badge, Button, Card, CardContent, CardHeader, Grid, Heading, KoraLink, KpiCard, PageHeader, QuickActions, Stack, StageCounters, Timeline } from "kora-ui";
 import { DataTable, type DataTableColumn } from "kora-ui/table";
 import { CalendarPlus, FilePlus, FileText, Package } from "lucide-react";
 import { money, requests, stages, stageTone, type WorkRequest } from "@/lib/demo-data";
@@ -20,9 +20,9 @@ export default function Template() {
       <PageHeader
         title="Today"
         description="What is moving, what is stuck, and what comes next."
-        actions={<Button asChild className="max-md:w-full"><a href="/preview/record-form">New request</a></Button>}
+        actions={<Button asChild className="max-md:w-full"><KoraLink href="/preview/record-form">New request</KoraLink></Button>}
       />
-      <div className="grid gap-[var(--kora-gap)]">
+      <Stack>
         <StageCounters
           stages={stages.map((stage) => ({
             id: stage.value,
@@ -63,8 +63,8 @@ export default function Template() {
             </CardContent>
           </Card>
         </Grid>
-        <div className="min-w-0">
-          <h2 className="mb-2 text-sm font-semibold">Quick actions</h2>
+        <Stack gap="none">
+          <Heading className="mb-2">Quick actions</Heading>
           <QuickActions
             actions={[
               { id: "request", label: "New request", description: "Ask for work or supplies", icon: <FilePlus aria-hidden />, href: "/preview/record-form" },
@@ -73,12 +73,12 @@ export default function Template() {
               { id: "report", label: "Monthly report", description: "Costs and totals", icon: <FileText aria-hidden />, href: "/preview/report" },
             ]}
           />
-        </div>
-        <div className="min-w-0">
-          <h2 className="mb-2 text-sm font-semibold">Latest requests</h2>
+        </Stack>
+        <Stack gap="none">
+          <Heading className="mb-2">Latest requests</Heading>
           <DataTable columns={columns} data={open} getRowId={(r) => r.id} pageSize={5} onRowClick={() => { window.location.href = "/preview/record-detail"; }} />
-        </div>
-      </div>
+        </Stack>
+      </Stack>
     </DemoShell>
   );
 }

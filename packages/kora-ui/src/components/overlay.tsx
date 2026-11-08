@@ -14,7 +14,8 @@ export const Dialog = D.Root;
 export const DialogTrigger = D.Trigger;
 export const DialogClose = D.Close;
 
-export type DialogContentProps = ComponentProps<typeof D.Content> & {
+// Omit the HTML `title` (a string): ours is the visible heading and takes any node.
+export type DialogContentProps = Omit<ComponentProps<typeof D.Content>, "title"> & {
   title: ReactNode;
   description?: ReactNode;
   footer?: ReactNode;
@@ -62,7 +63,7 @@ export function DialogContent({ title, description, footer, children, className,
           <Heading title={title} description={description} />
           <CloseIcon />
         </div>
-        {children && <div className="kr:min-h-0 kr:flex-1 kr:overflow-y-auto kr:px-4 kr:pb-4">{children}</div>}
+        {children && <div className="kr:min-h-0 kr:flex-1 kr:overflow-y-auto kr:px-4 kr:pb-4 kr:space-y-[var(--kora-gap)]">{children}</div>}
         {footer && (
           <div className="kr:flex kr:flex-col-reverse kr:gap-2 kr:border-t kr:border-line kr:p-4 kr:md:flex-row kr:md:justify-end">{footer}</div>
         )}
@@ -93,7 +94,7 @@ export function SheetContent({ title, description, footer, side = "right", child
           <Heading title={title} description={description} />
           <CloseIcon />
         </div>
-        <div className="kr:min-h-0 kr:flex-1 kr:overflow-y-auto kr:p-4">{children}</div>
+        <div className="kr:min-h-0 kr:flex-1 kr:overflow-y-auto kr:p-4 kr:space-y-[var(--kora-gap)]">{children}</div>
         {footer && <div className="kr:flex kr:justify-end kr:gap-2 kr:border-t kr:border-line kr:p-4">{footer}</div>}
       </D.Content>
     </D.Portal>

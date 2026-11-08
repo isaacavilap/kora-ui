@@ -3,7 +3,7 @@ import Link from "next/link";
 import { TemplateThumb } from "@/components/template-thumb";
 import { templateDocs, templateGroups } from "@/lib/registry";
 
-export const metadata: Metadata = { title: "Templates" };
+export const metadata: Metadata = { title: "Templates", alternates: { canonical: "/templates" } };
 
 export default function TemplatesIndex() {
   return (
@@ -33,4 +33,5 @@ export default function TemplatesIndex() {
     </main>
   );
 }
+
 

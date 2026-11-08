@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { ScopeSwitcher } from "kora-ui";
+import { ScopeSwitcher, Stack } from "kora-ui";
 
 const options = [
   { value: "all", label: "All companies", description: "Totals for the group" },
@@ -10,5 +10,5 @@ const options = [
 
 export default function Demo() {
   const [value, setValue] = useState("coffee");
-  return <div className="max-w-56"><ScopeSwitcher label="company" options={options} value={value} onChange={setValue} /></div>;
+  return <Stack gap="none" className="max-w-56"><ScopeSwitcher label="company" options={options} value={value} onChange={setValue} /></Stack>;
 }

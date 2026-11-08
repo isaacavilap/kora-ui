@@ -1,4 +1,5 @@
 "use client";
+import { Inline, Text } from "kora-ui";
 import { LoginScreen } from "kora-ui/auth";
 import { wait } from "@/lib/demo-data";
 import { brand } from "./logo";
@@ -9,9 +10,9 @@ export default function Template() {
       brand={brand}
       variant="split"
       aside={
-        <div className="flex h-full flex-col justify-end">
-          <p className="max-w-md text-2xl font-medium leading-snug">Every sale, cost, and refund for your store, in one place.</p>
-        </div>
+        <Inline gap="none" align="stretch" justify="end" wrap={false} className="h-full flex-col">
+          <Text strong className="max-w-md text-2xl leading-snug text-inherit">Every sale, cost, and refund for your store, in one place.</Text>
+        </Inline>
       }
       onSubmit={async () => {
         await wait();

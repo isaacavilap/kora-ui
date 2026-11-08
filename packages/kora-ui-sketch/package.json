@@ -1,0 +1,15 @@
+{
+  "name": "kora-ui-sketch",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Lo-fi grayscale sketches (bocetos) of a system: JSON screens, renderer, drag & drop editor, AI generation. Originally Wireframly; the Istmo Code portal serves these same files.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server.js",
+    "test": "node --no-warnings scripts/arch-check.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

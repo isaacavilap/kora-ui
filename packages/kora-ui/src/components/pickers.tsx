@@ -5,7 +5,7 @@ import { es as dayEs } from "@daypicker/react/locale";
 import { Calendar, Check, ChevronDown } from "lucide-react";
 import { FieldContext, Input, useFieldProps } from "./form";
 import { Button, popoverClass } from "./button";
-import { cn, useKora, useLabels } from "./provider";
+import { cn, plainSpaces, useKora, useLabels } from "./provider";
 
 export type { DateRange };
 
@@ -16,10 +16,10 @@ export function filterOptions(options: ComboboxOption[], query: string) {
   return q ? options.filter((o) => o.label.toLowerCase().includes(q)) : options;
 }
 
-export function Combobox({ options, value, onChange, placeholder, searchPlaceholder, emptyText, disabled, className, id, "aria-label": ariaLabel }: {
+type ComboboxProps = {
   options: ComboboxOption[];
-  value?: string;
-  onChange: (value: string) => void;
+  /** Sends the choice with a form. With several, one value for each. */
+  name?: string;
   placeholder?: string;
   searchPlaceholder?: string;
   emptyText?: string;
@@ -27,7 +27,14 @@ export function Combobox({ options, value, onChange, placeholder, searchPlacehol
   className?: string;
   id?: string;
   "aria-label"?: string;
-}) {
+} & (
+  | { multiple?: false; value?: string; onChange: (value: string) => void }
+  /** Several at once: the list stays open, and `value` follows the order of the options. */
+  | { multiple: true; value?: string[]; onChange: (value: string[]) => void }
+);
+
+export function Combobox(props: ComboboxProps) {
+  const { options, name, placeholder, searchPlaceholder, emptyText, disabled, className, id, "aria-label": ariaLabel } = props;
   const t = useLabels();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -35,7 +42,8 @@ export function Combobox({ options, value, onChange, placeholder, searchPlacehol
   const listId = useId();
   const listRef = useRef<HTMLUListElement>(null);
   const results = useMemo(() => filterOptions(options, query), [options, query]);
-  const selected = options.find((o) => o.value === value);
+  const chosen = props.multiple ? props.value ?? [] : props.value ? [props.value] : [];
+  const selected = options.filter((o) => chosen.includes(o.value)).map((o) => o.label).join(", ");
   const field = useFieldProps({ id });
 
   useEffect(() => setActive(0), [query, open]);
@@ -45,13 +53,19 @@ export function Combobox({ options, value, onChange, placeholder, searchPlacehol
 
   const choose = (option?: ComboboxOption) => {
     if (!option) return;
-    onChange(option.value);
+    if (props.multiple) {
+      const next = chosen.includes(option.value) ? chosen.filter((other) => other !== option.value) : [...chosen, option.value];
+      props.onChange(options.filter((o) => next.includes(o.value)).map((o) => o.value));
+      return;
+    }
+    props.onChange(option.value);
     setOpen(false);
     setQuery("");
   };
 
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
+      {name && chosen.map((chosenValue) => <input key={chosenValue} type="hidden" name={name} value={chosenValue} />)}
       <Popover.Trigger asChild>
         <Button
           {...field}
@@ -60,9 +74,9 @@ export function Combobox({ options, value, onChange, placeholder, searchPlacehol
           aria-expanded={open}
           aria-label={ariaLabel}
           disabled={disabled}
-          className={cn("kr:w-full kr:justify-between kr:px-3 kr:font-normal", !selected && "kr:text-muted", className)}
+          className={cn("kr:w-full kr:justify-between! kr:px-3 kr:font-normal", !selected && "kr:text-muted", className)}
         >
-          <span className="kr:truncate">{selected?.label ?? placeholder ?? t.selectPlaceholder}</span>
+          <span className="kr:truncate">{selected || (placeholder ?? t.selectPlaceholder)}</span>
           <ChevronDown aria-hidden className="kr:text-muted" />
         </Button>
       </Popover.Trigger>
@@ -92,13 +106,13 @@ export function Combobox({ options, value, onChange, placeholder, searchPlacehol
             }}
           />
           </FieldContext.Provider>
-          <ul ref={listRef} id={listId} role="listbox" className="kr:mt-1 kr:max-h-60 kr:overflow-y-auto">
+          <ul ref={listRef} id={listId} role="listbox" aria-multiselectable={props.multiple || undefined} className="kr:mt-1 kr:max-h-60 kr:overflow-y-auto">
             {results.map((o, i) => (
               <li
                 key={o.value}
                 id={`${listId}-${i}`}
                 role="option"
-                aria-selected={o.value === value}
+                aria-selected={chosen.includes(o.value)}
                 onClick={() => choose(o)}
                 onMouseMove={() => setActive(i)}
                 className={cn(
@@ -107,7 +121,7 @@ export function Combobox({ options, value, onChange, placeholder, searchPlacehol
                 )}
               >
                 {o.label}
-                {o.value === value && <Check aria-hidden className="kr:size-4 kr:text-accent" />}
+                {chosen.includes(o.value) && <Check aria-hidden className="kr:size-4 kr:text-accent" />}
               </li>
             ))}
             {results.length === 0 && <li className="kr:px-2.5 kr:py-3 kr:text-center kr:text-sm kr:text-muted">{emptyText ?? t.noResults}</li>}
@@ -149,7 +163,7 @@ export function DateRangePicker({ value, onChange, presets, placeholder, disable
   const [open, setOpen] = useState(false);
   const field = useFieldProps({ id });
   const format = useMemo(() => new Intl.DateTimeFormat(locale, { month: "short", day: "numeric", year: "numeric" }), [locale]);
-  const text = value?.from ? (value.to ? format.formatRange(value.from, value.to) : format.format(value.from)) : (placeholder ?? t.pickDates);
+  const text = value?.from ? (value.to ? plainSpaces(format.formatRange(value.from, value.to)) : format.format(value.from)) : (placeholder ?? t.pickDates);
 
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>

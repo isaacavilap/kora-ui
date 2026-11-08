@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Badge, Button, Card, CardContent, CardHeader, ChartCard, Grid, KpiCard, PageHeader, RankedList, SegmentBar, SegmentedControl } from "kora-ui";
+import { Badge, Button, Card, CardContent, CardHeader, ChartCard, Grid, Heading, Inline, KoraLink, KpiCard, PageHeader, RankedList, SegmentBar, SegmentedControl, Stack } from "kora-ui";
 import { AreaChart, BarChart } from "kora-ui/charts";
 import { DataTable, type DataTableColumn } from "kora-ui/table";
 import { money, orders, revenue, salesByChannel, statusTone, topProducts, type Order } from "@/lib/demo-data";
@@ -30,7 +30,7 @@ export default function Template() {
         description="How the store is selling, and what needs action today."
         actions={<SegmentedControl aria-label="Time range" options={ranges} value={range} onChange={setRange} />}
       />
-      <div className="grid gap-[var(--kora-gap)]">
+      <Stack>
         <Grid min="10.5rem">
           <KpiCard label="Net sales" value="$84,300" delta={7.3} deltaLabel="vs last month" trend={revenue.slice(-7).map((r) => r.revenue)} />
           <KpiCard label="Orders" value="1,482" delta={4.1} deltaLabel="vs last month" trend={[1180, 1210, 1260, 1300, 1380, 1424, 1482]} />
@@ -86,14 +86,14 @@ export default function Template() {
             </CardContent>
           </Card>
         </Grid>
-        <div className="min-w-0">
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold">Orders that need action</h2>
-            <Button asChild variant="ghost" size="sm"><a href="/preview/orders">All orders</a></Button>
-          </div>
+        <Stack gap="none">
+          <Inline justify="between" wrap={false} className="mb-2">
+            <Heading>Orders that need action</Heading>
+            <Button asChild variant="ghost" size="sm"><KoraLink href="/preview/orders">All orders</KoraLink></Button>
+          </Inline>
           <DataTable columns={columns} data={needsAction} getRowId={(o) => o.id} pageSize={5} exportFilename="orders-need-action" />
-        </div>
-      </div>
+        </Stack>
+      </Stack>
     </DemoShell>
   );
 }

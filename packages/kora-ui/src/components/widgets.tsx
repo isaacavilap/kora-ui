@@ -1,9 +1,10 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type DragEvent, type ReactNode } from "react";
 import { ToggleGroup } from "radix-ui";
-import { Download, File as FileIcon, X } from "lucide-react";
+import { Download, File as FileIcon, MoreHorizontal, X } from "lucide-react";
 import { Button, focusRing } from "./button";
-import { Alert, Badge, Card, CardContent, CardHeader, Skeleton, type Tone } from "./display";
+import { Alert, Badge, Card, CardContent, CardHeader, FileName, Skeleton, type Tone } from "./display";
 import { Delta } from "./metrics";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "./overlay";
 import { cn, KoraLink, useKora, useLabels } from "./provider";
 
 /** The same three states that DataTable and the charts accept. */
@@ -330,26 +331,34 @@ export function StageCounters({ stages, className }: { stages: StageCount[]; cla
   );
 }
 
-export type QuickAction = { id: string; label: ReactNode; description?: ReactNode; icon?: ReactNode; href: string };
+/** A link (`href`) or, without one, a button that calls `onSelect` (to open a dialog, for example). */
+export type QuickAction = { id: string; label: ReactNode; description?: ReactNode; icon?: ReactNode; href?: string; onSelect?: () => void };
 
 /** Shortcuts to the most common tasks. */
 export function QuickActions({ actions, className }: { actions: QuickAction[]; className?: string }) {
+  const tile = cn("kr:flex kr:h-full kr:min-h-11 kr:w-full kr:cursor-pointer kr:items-start kr:gap-2.5 kr:rounded-lg kr:border kr:border-line kr:bg-surface kr:p-3 kr:text-left kr:text-sm kr:transition-colors kr:hover:border-line-strong kr:[&_svg]:mt-0.5 kr:[&_svg]:size-4 kr:[&_svg]:shrink-0 kr:[&_svg]:text-accent", focusRing);
   return (
     <ul className={cn("kr:grid kr:gap-2 kr:[grid-template-columns:repeat(auto-fit,minmax(min(11rem,100%),1fr))]", className)}>
-      {actions.map((action) => (
-        <li key={action.id}>
-          <KoraLink
-            href={action.href}
-            className={cn("kr:flex kr:h-full kr:min-h-11 kr:items-start kr:gap-2.5 kr:rounded-lg kr:border kr:border-line kr:bg-surface kr:p-3 kr:text-sm kr:transition-colors kr:hover:border-line-strong kr:[&_svg]:mt-0.5 kr:[&_svg]:size-4 kr:[&_svg]:shrink-0 kr:[&_svg]:text-accent", focusRing)}
-          >
+      {actions.map((action) => {
+        const body = (
+          <>
             {action.icon}
             <span className="kr:min-w-0">
               <span className="kr:block kr:font-medium kr:text-fg">{action.label}</span>
               {action.description && <span className="kr:block kr:text-[0.8125rem] kr:text-muted">{action.description}</span>}
             </span>
-          </KoraLink>
-        </li>
-      ))}
+          </>
+        );
+        return (
+          <li key={action.id}>
+            {action.href !== undefined ? (
+              <KoraLink href={action.href} className={tile}>{body}</KoraLink>
+            ) : (
+              <button type="button" onClick={action.onSelect} className={tile}>{body}</button>
+            )}
+          </li>
+        );
+      })}
     </ul>
   );
 }
@@ -371,7 +380,7 @@ export function DocumentList({ documents, onRemove, className, ...state }: Widge
         <li key={doc.id} className="kr:flex kr:items-center kr:gap-2.5 kr:py-1.5">
           <FileIcon aria-hidden className="kr:size-4 kr:shrink-0 kr:text-muted" />
           <span className="kr:min-w-0 kr:flex-1">
-            <span className="kr:block kr:truncate kr:text-fg">{doc.name}</span>
+            <FileName name={doc.name} className="kr:text-fg" />
             {doc.meta && <span className="kr:block kr:text-xs kr:text-muted">{doc.meta}</span>}
           </span>
           {doc.href && (
@@ -409,3 +418,127 @@ export function AlertList({ alerts, className, ...state }: WidgetStateProps & { 
     </ul>
   );
 }
+
+export type KanbanCard = { id: string; title: ReactNode; description?: ReactNode };
+/** `count` is the total when only some cards are loaded. It defaults to the cards shown. */
+export type KanbanColumn = { id: string; title: ReactNode; count?: number; cards?: KanbanCard[] };
+
+/** A board with one column per stage. It scrolls sideways when the columns do not fit. */
+export function Kanban({ columns, onCardClick, onCardMove, loading, className, "aria-label": ariaLabel }: {
+  columns: KanbanColumn[];
+  onCardClick?: (card: KanbanCard, column: KanbanColumn) => void;
+  /** Lets people drag cards between columns, or use the menu of each card. You update `columns`. */
+  onCardMove?: (card: KanbanCard, from: KanbanColumn, to: KanbanColumn) => void;
+  loading?: boolean;
+  className?: string;
+  "aria-label": string;
+}) {
+  const t = useLabels();
+  const board = useRef<HTMLDivElement>(null);
+  const dragged = useRef<{ card: KanbanCard; from: KanbanColumn } | null>(null);
+  const focusAfterMove = useRef<string | null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
+  const [status, setStatus] = useState<ReactNode>(null);
+
+  // A moved card is a new element in another column, so the focus has to follow it.
+  useEffect(() => {
+    if (!focusAfterMove.current) return;
+    const button = board.current?.querySelector<HTMLElement>(`[data-kanban-card="${CSS.escape(focusAfterMove.current)}"] button`);
+    if (button) {
+      button.focus();
+      focusAfterMove.current = null;
+    }
+  }, [columns]);
+
+  const move = (card: KanbanCard, from: KanbanColumn, to: KanbanColumn) => {
+    if (from.id === to.id) return;
+    onCardMove?.(card, from, to);
+    setStatus(<>{t.movedTo}: {to.title}</>);
+  };
+  const endDrag = () => {
+    dragged.current = null;
+    setDraggingId(null);
+    setOverId(null);
+  };
+
+  return (
+    <div ref={board} role="group" aria-label={ariaLabel} tabIndex={0} className={cn("kr:grid kr:auto-cols-[minmax(13rem,1fr)] kr:grid-flow-col kr:gap-3 kr:overflow-x-auto", className)}>
+      {columns.map((column) => (
+        <div
+          key={column.id}
+          className={cn("kr:flex kr:min-h-24 kr:min-w-0 kr:flex-col kr:gap-2 kr:rounded-lg kr:bg-surface-2 kr:p-2", overId === column.id && "kr:outline-2 kr:-outline-offset-2 kr:outline-accent")}
+          {...(onCardMove && {
+            onDragOver: (event: DragEvent) => {
+              if (!dragged.current) return;
+              event.preventDefault();
+              event.dataTransfer.dropEffect = "move";
+              setOverId(column.id);
+            },
+            onDragLeave: (event: DragEvent) => {
+              if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOverId(null);
+            },
+            onDrop: (event: DragEvent) => {
+              event.preventDefault();
+              if (dragged.current) move(dragged.current.card, dragged.current.from, column);
+              endDrag();
+            },
+          })}
+        >
+          <div className="kr:flex kr:items-center kr:justify-between kr:gap-2 kr:px-1 kr:text-sm kr:font-medium kr:text-fg">
+            <span className="kr:min-w-0">{column.title}</span>
+            {(column.count ?? column.cards) !== undefined && <Badge>{column.count ?? column.cards?.length}</Badge>}
+          </div>
+          {loading && [0, 1].map((i) => <Skeleton key={i} className="kr:h-16 kr:w-full kr:bg-line!" />)}
+          {column.cards?.map((card) => {
+            const body = (
+              <>
+                <span className="kr:block kr:text-sm kr:font-medium kr:text-fg">{card.title}</span>
+                {card.description && <span className="kr:mt-0.5 kr:block kr:text-[0.8125rem] kr:text-muted">{card.description}</span>}
+              </>
+            );
+            const box = cn("kr:block kr:w-full kr:rounded-md kr:border kr:border-line kr:bg-surface kr:p-3 kr:text-left", onCardMove && "kr:pr-12 kr:lg:pr-10");
+            return (
+              <div
+                key={card.id}
+                data-kanban-card={card.id}
+                className={cn("kr:relative", onCardMove && "kr:cursor-grab", draggingId === card.id && "kr:opacity-50")}
+                {...(onCardMove && {
+                  draggable: true,
+                  onDragStart: (event: DragEvent) => {
+                    dragged.current = { card, from: column };
+                    event.dataTransfer.effectAllowed = "move";
+                    event.dataTransfer.setData("text/plain", typeof card.title === "string" ? card.title : card.id);
+                    setDraggingId(card.id);
+                  },
+                  onDragEnd: endDrag,
+                })}
+              >
+                {onCardClick ? (
+                  <button type="button" className={cn(box, "kr:cursor-pointer kr:hover:border-line-strong", focusRing)} onClick={() => onCardClick(card, column)}>{body}</button>
+                ) : (
+                  <div className={box}>{body}</div>
+                )}
+                {onCardMove && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger aria-label={typeof card.title === "string" ? `${t.moveCard}: ${card.title}` : t.moveCard} className={cn("kr:absolute kr:top-0 kr:right-0 kr:flex kr:size-11 kr:cursor-pointer kr:items-center kr:justify-center kr:rounded-md kr:text-muted kr:hover:text-fg kr:lg:size-9", focusRing)}>
+                      <MoreHorizontal aria-hidden className="kr:size-4" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuLabel>{t.moveTo}</DropdownMenuLabel>
+                      {columns.filter((other) => other.id !== column.id).map((other) => (
+                        <DropdownMenuItem key={other.id} onSelect={() => { focusAfterMove.current = card.id; move(card, column, other); }}>{other.title}</DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ))}
+      <span role="status" className="kr:sr-only">{status}</span>
+    </div>
+  );
+}
+

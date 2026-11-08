@@ -1,6 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
-import { Badge, Button, Dialog, DialogContent, DropdownMenuItem, Field, Input, PageHeader, Select, Sheet, SheetContent, StatGroup, Tabs, TabsContent, TabsList, TabsTrigger, Toaster, toast } from "kora-ui";
+import { Badge, Button, DescriptionList, Dialog, DialogContent, DropdownMenuItem, Field, Form, Input, PageHeader, Select, Sheet, SheetContent, StatGroup, Tabs, TabsContent, TabsList, TabsTrigger, Text, Toaster, toast } from "kora-ui";
 import { DataTable, type DataTableColumn } from "kora-ui/table";
 import { Plus } from "lucide-react";
 import { money, orders as seed, statusTone, type Order, type OrderStatus } from "@/lib/demo-data";
@@ -73,20 +73,22 @@ export default function Template() {
       <Sheet open={Boolean(viewing)} onOpenChange={(open) => !open && setViewing(undefined)}>
         <SheetContent title={viewing?.id} description={viewing?.customer}>
           {viewing && (
-            <dl className="grid grid-cols-2 gap-y-3 text-sm">
-              <dt className="text-[var(--kora-muted)]">Status</dt><dd><Badge tone={statusTone[viewing.status]} className="capitalize">{viewing.status}</Badge></dd>
-              <dt className="text-[var(--kora-muted)]">Date</dt><dd>{viewing.date}</dd>
-              <dt className="text-[var(--kora-muted)]">Email</dt><dd className="truncate">{viewing.email}</dd>
-              <dt className="text-[var(--kora-muted)]">Total</dt><dd>{money(viewing.total)}</dd>
-            </dl>
+            <DescriptionList
+              className="grid-cols-2 gap-x-0 gap-y-3"
+              items={[
+                { label: "Status", value: <Badge tone={statusTone[viewing.status]} className="capitalize">{viewing.status}</Badge> },
+                { label: "Date", value: viewing.date },
+                { label: "Email", value: <Text inline className="block truncate">{viewing.email}</Text> },
+                { label: "Total", value: money(viewing.total) },
+              ]}
+            />
           )}
         </SheetContent>
       </Sheet>
 
       <Dialog open={creating} onOpenChange={setCreating}>
         <DialogContent title="New order" description="Add an order by hand, such as a phone sale.">
-          <form
-            className="grid gap-4"
+          <Form
             onSubmit={(e) => {
               e.preventDefault();
               const form = new FormData(e.currentTarget);
@@ -102,7 +104,7 @@ export default function Template() {
             <Field label="Email"><Input name="email" type="email" required /></Field>
             <Field label="Total"><Input name="total" type="number" min="1" required /></Field>
             <Button type="submit" className="justify-self-end max-md:w-full">Create order</Button>
-          </form>
+          </Form>
         </DialogContent>
       </Dialog>
 

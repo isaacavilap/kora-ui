@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Button, Card, CardContent, CardFooter, CardHeader, ConfirmDialog, Dialog, DialogContent, DropdownMenuItem, Field, Input, PageHeader, Select, Switch, Tabs, TabsContent, TabsList, TabsTrigger, Toaster, toast } from "kora-ui";
+import { Button, Card, CardContent, CardFooter, CardHeader, ConfirmDialog, Dialog, DialogContent, DropdownMenuItem, Field, Form, Inline, Input, PageHeader, Select, Stack, Switch, Tabs, TabsContent, TabsList, TabsTrigger, Text, Toaster, toast } from "kora-ui";
 import { DataTable, type DataTableColumn } from "kora-ui/table";
 import { Plus } from "lucide-react";
 import { wait } from "@/lib/demo-data";
@@ -44,7 +44,7 @@ export default function Template() {
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
         </TabsList>
         <TabsContent value="general" className="mt-3 max-w-2xl">
-          <form onSubmit={(e) => { e.preventDefault(); toast.success("Settings saved."); }}>
+          <Form className="block" onSubmit={(e) => { e.preventDefault(); toast.success("Settings saved."); }}>
             <Card>
               <CardHeader title="Company" />
               <CardContent className="grid gap-4">
@@ -60,7 +60,7 @@ export default function Template() {
                 <Button type="submit" className="max-md:w-full">Save changes</Button>
               </CardFooter>
             </Card>
-          </form>
+          </Form>
         </TabsContent>
         <TabsContent value="locations" className="mt-3">
           <DataTable
@@ -76,13 +76,13 @@ export default function Template() {
             <CardHeader title="Email me about" />
             <CardContent className="grid gap-4">
               {alerts.map((alert) => (
-                <div key={alert.id} className="flex items-center justify-between gap-4">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium">{alert.label}</p>
-                    <p className="text-[0.8125rem] text-[var(--kora-muted)]">{alert.description}</p>
-                  </div>
+                <Inline key={alert.id} gap="md" justify="between" wrap={false}>
+                  <Stack gap="none">
+                    <Text strong>{alert.label}</Text>
+                    <Text size="sm" tone="muted">{alert.description}</Text>
+                  </Stack>
                   <Switch aria-label={alert.label} checked={on[alert.id]} onCheckedChange={(value) => setOn({ ...on, [alert.id]: value })} />
-                </div>
+                </Inline>
               ))}
             </CardContent>
           </Card>
@@ -91,8 +91,7 @@ export default function Template() {
 
       <Dialog open={adding} onOpenChange={setAdding}>
         <DialogContent title="Add location">
-          <form
-            className="grid gap-4"
+          <Form
             onSubmit={(e) => {
               e.preventDefault();
               const form = new FormData(e.currentTarget);
@@ -105,7 +104,7 @@ export default function Template() {
             <Field label="City"><Input name="city" required /></Field>
             <Field label="Phone"><Input name="phone" type="tel" /></Field>
             <Button type="submit" className="justify-self-end max-md:w-full">Add location</Button>
-          </form>
+          </Form>
         </DialogContent>
       </Dialog>
 

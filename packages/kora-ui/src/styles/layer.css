@@ -1,0 +1,4 @@
+/* kora-ui/styles-layer.css: the same styles inside @layer kora, for apps that order layers
+   (@layer theme, base, kora, components, utilities). Import it from JS (layout.tsx), not from a
+   Tailwind CSS file: Tailwind inlines @import and next dev then misses kora-ui rebuilds. */
+@import "./styles.css" layer(kora);

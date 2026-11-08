@@ -1,5 +1,5 @@
 "use client";
-import { Card, CardContent, Grid } from "kora-ui";
+import { Card, CardContent, Grid, Stack } from "kora-ui";
 
 const box = (text: string) => (
   <Card>
@@ -9,7 +9,7 @@ const box = (text: string) => (
 
 export default function Demo() {
   return (
-    <div className="grid gap-4">
+    <Stack gap="md">
       <Grid min="10rem">
         {box("Fits")}
         {box("as many")}
@@ -20,7 +20,7 @@ export default function Demo() {
         {box("2fr from 1024px")}
         {box("1fr, stacked below")}
       </Grid>
-    </div>
+    </Stack>
   );
 }
 

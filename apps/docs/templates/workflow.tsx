@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Badge, Button, ConfirmDialog, DropdownMenuItem, PageHeader, Tabs, TabsContent, TabsList, TabsTrigger, Toaster, toast } from "kora-ui";
+import { Badge, Button, ConfirmDialog, DropdownMenuItem, KoraLink, PageHeader, Tabs, TabsContent, TabsList, TabsTrigger, Text, Toaster, toast } from "kora-ui";
 import { DataTable, type DataTableColumn } from "kora-ui/table";
 import { Plus } from "lucide-react";
 import { money, requests as seed, stages, wait, type Stage, type WorkRequest } from "@/lib/demo-data";
@@ -9,7 +9,7 @@ import { DemoShell } from "./shell";
 const priorityTone = { Low: "neutral", Normal: "info", High: "danger" } as const;
 
 const columns: DataTableColumn<WorkRequest>[] = [
-  { id: "id", header: "Request", accessor: "id", sortable: true, cell: (r) => <span className="font-medium">{r.id}</span> },
+  { id: "id", header: "Request", accessor: "id", sortable: true, cell: (r) => <Text inline strong>{r.id}</Text> },
   { id: "title", header: "Title", accessor: "title", sortable: true },
   { id: "assignee", header: "Assigned to", accessor: "assignee", filter: { type: "select" } },
   { id: "location", header: "Location", accessor: "location", filter: { type: "select" }, hideOnMobile: true },
@@ -30,7 +30,7 @@ export default function Template() {
       <PageHeader
         title="Requests"
         description="Each stage has its own list, and each request has one next step."
-        actions={<Button asChild className="max-md:w-full"><a href="/preview/record-form"><Plus aria-hidden />New request</a></Button>}
+        actions={<Button asChild className="max-md:w-full"><KoraLink href="/preview/record-form"><Plus aria-hidden />New request</KoraLink></Button>}
       />
       <Tabs defaultValue="new">
         <TabsList>
@@ -57,7 +57,7 @@ export default function Template() {
               bulkActions={stage.action ? (rows, clear) => <Button size="sm" onClick={() => { setMoving(rows); clear(); }}>{stage.action}</Button> : undefined}
               rowActions={(r) => (
                 <>
-                  <DropdownMenuItem asChild><a href="/preview/record-detail">Open</a></DropdownMenuItem>
+                  <DropdownMenuItem asChild><KoraLink href="/preview/record-detail">Open</KoraLink></DropdownMenuItem>
                   {stage.action && <DropdownMenuItem onSelect={() => setMoving([r])}>{stage.action}</DropdownMenuItem>}
                 </>
               )}

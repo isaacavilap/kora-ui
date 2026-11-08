@@ -33,7 +33,7 @@ export function TabsTrigger({ className, ...props }: ComponentProps<typeof R.Tri
 }
 
 export function TabsContent({ className, ...props }: ComponentProps<typeof R.Content>) {
-  return <R.Content className={cn("kr:pt-4 kr:outline-none", className)} {...props} />;
+  return <R.Content className={cn("kr:pt-4 kr:outline-none kr:space-y-[var(--kora-gap)]", className)} {...props} />;
 }
 
 /** Page numbers around the current one, with gaps. Uses null to mark a gap. */

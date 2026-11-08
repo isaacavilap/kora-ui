@@ -2,7 +2,8 @@ import { useState } from "react";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { DataTable, matchesFilter, toCsv, type DataTableColumn, type DataTableState } from "./data-table";
+import { toCsv } from "./export";
+import { DataTable, matchesFilter, type DataTableColumn, type DataTableState } from "./data-table";
 
 type Row = { id: string; name: string; total: number };
 const data: Row[] = Array.from({ length: 12 }, (_, i) => ({ id: String(i + 1), name: `Order ${String(i + 1).padStart(2, "0")}`, total: 100 - i }));
@@ -226,5 +227,41 @@ describe("DataTable row click", () => {
     await userEvent.click(header);
     await userEvent.click(header);
     expect(screen.getByRole("columnheader", { name: /Total/ }).getAttribute("aria-sort")).not.toBe("none");
+  });
+});
+
+describe("DataTable cards", () => {
+  it("puts the media of each row on top of its card", () => {
+    render(<DataTable columns={columns} data={data.slice(0, 2)} getRowId={(r) => r.id} cardMedia={(row) => <img alt={`Photo of ${row.name}`} src="/x.png" />} />);
+    expect(screen.getByAltText("Photo of Order 01")).toBeTruthy();
+    expect(screen.getByAltText("Photo of Order 02")).toBeTruthy();
+  });
+});
+
+describe("DataTable view", () => {
+  it("remembers the chosen view on this device", async () => {
+    const store = new Map<string, string>();
+    vi.stubGlobal("localStorage", { getItem: (key: string) => store.get(key) ?? null, setItem: (key: string, value: string) => store.set(key, value) });
+    const table = <DataTable columns={columns} data={data.slice(0, 2)} getRowId={(r) => r.id} storageKey="orders" />;
+    const first = render(table);
+    await userEvent.click(screen.getByLabelText("Card view"));
+    expect(store.get("kora-table-view:orders")).toBe("cards");
+    first.unmount();
+    render(table);
+    expect(screen.queryByRole("table")?.closest(".kr\\:hidden")).toBeTruthy();
+    vi.unstubAllGlobals();
+  });
+});
+
+describe("toXlsx", () => {
+  it("builds a zip with numbers as numbers and text that is never a formula", async () => {
+    const { toXlsx } = await import("./export");
+    const file = toXlsx(["Name", "Total"], [["=CMD()", 12.5], ["<b>", null]]);
+    expect([...file.slice(0, 4)]).toEqual([0x50, 0x4b, 0x03, 0x04]);
+    const text = new TextDecoder().decode(file);
+    expect(text).toContain('<c r="B2"><v>12.5</v></c>');
+    expect(text).toContain('t="inlineStr"><is><t xml:space="preserve">=CMD()</t>');
+    expect(text).toContain("&lt;b&gt;");
+    expect(text).not.toContain("<f>");
   });
 });

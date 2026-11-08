@@ -22,13 +22,14 @@ import {
   type SortingState,
   type Updater,
 } from "@tanstack/react-table";
-import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, ChevronsUpDown, Columns3, Download, LayoutGrid, MoreHorizontal, Rows3 } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown, FileSpreadsheet, FileText, ChevronRight, ChevronsUpDown, Columns3, Download, LayoutGrid, MoreHorizontal, Rows3 } from "lucide-react";
 import { Button } from "../components/button";
 import { EmptyState, Skeleton } from "../components/display";
 import { Checkbox, Select } from "../components/form";
 import { DateRangePicker, type DateRange } from "../components/pickers";
 import { Pagination } from "../components/navigation";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "../components/overlay";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../components/overlay";
+import { downloadFile, printTable, toCsv, toXlsx } from "./export";
 import { SegmentedControl } from "../components/widgets";
 import { cn, useLabels } from "../components/provider";
 import { FilterBar, FilterSelect, type FilterOption } from "./filter-bar";
@@ -76,7 +77,7 @@ export function matchesFilter(value: unknown, filter: DataTableFilters[string]) 
 }
 
 const readValue = <T extends Record<string, any>>(row: T, c: DataTableColumn<T>) => {
-  const value = typeof c.accessor === "function" ? c.accessor(row) : c.accessor ? row[c.accessor] : undefined;
+  const value = typeof c.accessor === "function" ? c.accessor(row) : row[c.accessor ?? c.id];
   return value === null ? undefined : value;
 };
 
@@ -85,7 +86,7 @@ export type DataTableColumn<T> = {
   header: ReactNode;
   /** Text label for the phone layout and sort menu. Defaults to `header` when it is a string. */
   label?: string;
-  /** A key of the row, or a function that returns the value used to sort and search. */
+  /** A key of the row, or a function that returns the value used to sort and search. Defaults to the key named `id`. */
   accessor?: keyof T | ((row: T) => unknown);
   /** Custom rendering. Defaults to the accessor value. */
   cell?: (row: T) => ReactNode;
@@ -124,15 +125,19 @@ export type DataTableProps<T extends Record<string, any>> = {
   columnToggle?: boolean;
   /** Adds a menu at the end of each row. Return DropdownMenuItem elements. */
   rowActions?: (row: T) => ReactNode;
-  /** Adds a table and card switch on wider screens. Phones already use cards. */
+  /** A table and card switch on wider screens, on by default. Phones always use cards. The choice is saved on the device. */
   viewToggle?: boolean;
+  /** A small picture at the side of each card, such as a product photo. Only in the card layout. */
+  cardMedia?: (row: T) => ReactNode;
+  /** The name the chosen view is saved under. Defaults to `exportFilename`, then to the page path. */
+  storageKey?: string;
   /** Adds a button to each row that shows more below it. */
   renderExpanded?: (row: T) => ReactNode;
   /** Controlled filters, such as ones kept in the URL. Use with `onFiltersChange`. */
   filters?: DataTableFilters;
   onFiltersChange?: (filters: DataTableFilters) => void;
   onSearchChange?: (search: string) => void;
-  /** Adds a CSV button that exports the visible columns of the filtered rows. In server mode it has only the current page, so export from your server for more. */
+  /** Adds an Export menu (Excel, CSV, PDF) for the visible columns of the filtered rows. In server mode it has only the current page, so export from your server for more. */
   exportFilename?: string;
   /** Server mode: the parent fetches each page. `data` holds only the current page. */
   manual?: boolean;
@@ -151,31 +156,6 @@ export type DataTableProps<T extends Record<string, any>> = {
   mobile?: "cards" | "scroll";
   className?: string;
 };
-
-/**
- * Text that opens safely in a spreadsheet. A leading quote stops cells such as
- * `=HYPERLINK(...)` from running as formulas, since table data can come from users.
- */
-export function toCsv(headers: string[], rows: unknown[][]) {
-  const cell = (value: unknown) => {
-    if (value === null || value === undefined) return "";
-    if (value instanceof Date) return value.toISOString();
-    let text = String(value);
-    if (typeof value === "string" && /^[=+\-@\t\r]/.test(text)) text = `'${text}`;
-    return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-  };
-  return [headers, ...rows].map((row) => row.map(cell).join(",")).join("\r\n");
-}
-
-function download(filename: string, text: string) {
-  // The byte order mark lets Excel read accents correctly.
-  const url = URL.createObjectURL(new Blob(["\ufeff", text], { type: "text/csv;charset=utf-8" }));
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename.endsWith(".csv") ? filename : `${filename}.csv`;
-  link.click();
-  URL.revokeObjectURL(url);
-}
 
 function optionsFrom<T extends Record<string, any>>(data: T[], c: DataTableColumn<T>): FilterOption[] {
   const values = new Set<string>();
@@ -197,7 +177,7 @@ export function DataTable<T extends Record<string, any>>({
   toolbarActions,
   columnToggle,
   rowActions,
-  viewToggle,
+  viewToggle = true,
   renderExpanded,
   filters: filtersProp,
   onFiltersChange,
@@ -215,6 +195,8 @@ export function DataTable<T extends Record<string, any>>({
   onRetry,
   empty,
   mobile = "cards",
+  cardMedia,
+  storageKey,
   className,
 }: DataTableProps<T>) {
   const t = useLabels();
@@ -223,7 +205,24 @@ export function DataTable<T extends Record<string, any>>({
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [localFilters, setLocalFilters] = useState<DataTableFilters>({});
   const filters = filtersProp ?? localFilters;
-  const [view, setView] = useState("table");
+  const [view, setViewState] = useState("table");
+  const viewName = storageKey ?? exportFilename;
+  const viewKey = () => `kora-table-view:${viewName ?? window.location.pathname}`;
+  // The saved view loads after the first paint, so the server and the browser render the same thing.
+  useEffect(() => {
+    if (!viewToggle) return;
+    try {
+      const saved = localStorage.getItem(viewKey());
+      if (saved === "cards" || saved === "table") setViewState(saved);
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- viewKey only reads viewName
+  }, [viewToggle, viewName]);
+  const setView = (next: string) => {
+    setViewState(next);
+    try {
+      localStorage.setItem(viewKey(), next);
+    } catch {}
+  };
   const [expanded, setExpanded] = useState<string[]>([]);
   const [localSearch, setLocalSearch] = useState("");
   const [hiddenColumns, setHiddenColumns] = useState<string[]>([]);
@@ -369,9 +368,14 @@ export function DataTable<T extends Record<string, any>>({
   };
   const status = body();
 
-  const exportRows = () => {
-    const exportable = table.getFilteredRowModel().rows;
-    download(exportFilename!, toCsv(shownColumns.map(textOf), exportable.map((row) => shownColumns.map((c) => readValue(row.original, c)))));
+  const exportRows = (format: "xlsx" | "csv" | "pdf") => {
+    const headers = shownColumns.map(textOf);
+    const rows = table.getFilteredRowModel().rows.map((row) => shownColumns.map((c) => readValue(row.original, c)));
+    const name = exportFilename!.replace(/\.(csv|xlsx)$/i, "");
+    if (format === "pdf") return printTable(name, headers, rows);
+    if (format === "xlsx") return downloadFile(`${name}.xlsx`, [toXlsx(headers, rows)], "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    // The byte order mark lets Excel read accents correctly.
+    downloadFile(`${name}.csv`, ["\ufeff", toCsv(headers, rows)], "text/csv;charset=utf-8");
   };
 
   const toolbar = (searchable || filterColumns.length > 0 || toolbarActions || columnToggle || exportFilename || viewToggle) && (
@@ -397,10 +401,20 @@ export function DataTable<T extends Record<string, any>>({
               </span>
             )}
             {exportFilename && (
-              <Button variant="secondary" onClick={exportRows} disabled={Boolean(loading || error) || total === 0}>
-                <Download aria-hidden />
-                {t.exportCsv}
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="secondary" disabled={Boolean(loading || error) || total === 0}>
+                    <Download aria-hidden />
+                    {t.export}
+                    <ChevronDown aria-hidden />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onSelect={() => exportRows("xlsx")}><FileSpreadsheet aria-hidden />Excel</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => exportRows("csv")}><FileText aria-hidden />CSV</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => exportRows("pdf")}><FileText aria-hidden />PDF</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
             {columnToggle && (
               // Phone cards already drop columns with hideOnMobile, so the menu would only cost space there.
@@ -448,7 +462,7 @@ export function DataTable<T extends Record<string, any>>({
   return (
     <div className={cn("kr:min-w-0", className)}>
     {toolbar}
-    <div className="kr:min-w-0 kr:overflow-hidden kr:rounded-lg kr:border kr:border-line kr:bg-surface kr:text-fg">
+    <div className={cn("kr:min-w-0 kr:text-fg", cardsOnly ? "" : "kr:overflow-hidden kr:rounded-lg kr:border kr:border-line kr:bg-surface")}>
       {selectable && selected.length > 0 && bulkActions && (
         <div className="kr:flex kr:flex-wrap kr:items-center kr:gap-2 kr:border-b kr:border-line kr:bg-accent-soft kr:px-3 kr:py-2">
           <span className="kr:mr-auto kr:text-sm kr:font-medium kr:tabular-nums">
@@ -459,7 +473,7 @@ export function DataTable<T extends Record<string, any>>({
       )}
 
       {useCards && !status && (sortable.length > 0 || selectable) && (
-        <div className={cn("kr:flex kr:items-center kr:gap-3 kr:border-b kr:border-line kr:p-3", phoneOnly)}>
+        <div className={cn("kr:flex kr:items-center kr:gap-3", cardsOnly ? "kr:pb-3" : "kr:border-b kr:border-line kr:p-3", phoneOnly)}>
           {selectable && <Checkbox aria-label={t.selectAll} checked={headerCheck} onCheckedChange={(v) => toggleAll(v === true)} />}
           {sortable.length > 0 && (
             <>
@@ -491,13 +505,14 @@ export function DataTable<T extends Record<string, any>>({
       )}
 
       {useCards && !status && (
-        <ul className={cardsOnly ? "kr:grid kr:gap-px kr:bg-line kr:md:grid-cols-2 kr:xl:grid-cols-3" : "kr:divide-y kr:divide-line kr:md:hidden"}>
+        <ul className={cardsOnly ? "kr:grid kr:gap-3 kr:sm:grid-cols-2 kr:lg:grid-cols-3 kr:2xl:grid-cols-4" : "kr:divide-y kr:divide-line kr:md:hidden"}>
           {rows.map((row) => (
             <li
               key={row.id}
               onClick={onRowClick && ((e) => { if (!(e.target as Element).closest("a, button, input, label, select, textarea")) onRowClick(row.original); })}
-              className={cn("kr:flex kr:flex-wrap kr:gap-3 kr:bg-surface kr:p-3", onRowClick && "kr:cursor-pointer kr:active:bg-surface-2")}
+              className={cn("kr:flex kr:flex-wrap kr:content-start kr:gap-3 kr:bg-surface kr:p-3", cardsOnly && "kr:overflow-hidden kr:rounded-lg kr:border kr:border-line", onRowClick && "kr:cursor-pointer kr:active:bg-surface-2", onRowClick && cardsOnly && "kr:transition-colors kr:hover:border-line-strong")}
             >
+              {cardMedia && <div className="kr:size-20 kr:shrink-0 kr:overflow-hidden kr:rounded-md kr:bg-surface-2 kr:[&>*]:size-full">{cardMedia(row.original)}</div>}
               {selectable && (
                 <span onClick={(e) => e.stopPropagation()} className="kr:pt-0.5">
                   <Checkbox aria-label={t.selectRow} checked={row.getIsSelected()} onCheckedChange={(v) => row.toggleSelected(v === true)} />
@@ -523,7 +538,7 @@ export function DataTable<T extends Record<string, any>>({
       )}
 
       {useCards && !status && footerColumns.length > 0 && (
-        <dl className={cn("kr:space-y-1 kr:border-t kr:border-line kr:bg-surface-2 kr:p-3 kr:text-sm kr:font-medium", phoneOnly)}>
+        <dl className={cn("kr:space-y-1 kr:border-t kr:border-line kr:bg-surface-2 kr:p-3 kr:text-sm kr:font-medium", cardsOnly && "kr:mt-3 kr:rounded-lg kr:border", phoneOnly)}>
           {footerColumns.map((c) => (
             <div key={c.id} className="kr:flex kr:justify-between kr:gap-4">
               <dt>{textOf(c)}</dt>
@@ -596,7 +611,7 @@ export function DataTable<T extends Record<string, any>>({
                   {shownColumns.map((c) => (
                     <td
                       key={c.id}
-                      className={cn("kr:px-3 kr:py-[var(--kora-cell-y)]", c.align === "right" && "kr:text-right kr:tabular-nums")}
+                      className={cn("kr:px-3 kr:py-[var(--kora-cell-y)]", c.align === "right" && "kr:text-right kr:tabular-nums kr:whitespace-nowrap")}
                     >
                       {value(row, c)}
                     </td>
@@ -618,7 +633,7 @@ export function DataTable<T extends Record<string, any>>({
                 {selectable && <td />}
                 {renderExpanded && <td />}
                 {shownColumns.map((c) => (
-                  <td key={c.id} className={cn("kr:px-3 kr:py-2", c.align === "right" && "kr:text-right kr:tabular-nums")}>{c.footer?.(footerRows())}</td>
+                  <td key={c.id} className={cn("kr:px-3 kr:py-2", c.align === "right" && "kr:text-right kr:tabular-nums kr:whitespace-nowrap")}>{c.footer?.(footerRows())}</td>
                 ))}
                 {rowActions && <td />}
               </tr>
@@ -629,7 +644,7 @@ export function DataTable<T extends Record<string, any>>({
       </div>
 
       {!error && !loading && total > 0 && (
-        <div className="kr:flex kr:flex-wrap kr:items-center kr:justify-between kr:gap-2 kr:border-t kr:border-line kr:px-3 kr:py-2">
+        <div className={cn("kr:flex kr:flex-wrap kr:items-center kr:justify-between kr:gap-2", cardsOnly ? "kr:mt-3 kr:py-2" : "kr:border-t kr:border-line kr:px-3 kr:py-2")}>
           <p className="kr:text-[0.8125rem] kr:text-muted kr:tabular-nums">
             {pagination.pageIndex * pagination.pageSize + 1}–{Math.min((pagination.pageIndex + 1) * pagination.pageSize, total)} {t.of} {total}
           </p>

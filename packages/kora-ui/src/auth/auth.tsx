@@ -4,10 +4,11 @@ import { Button } from "../components/button";
 import { Alert, Badge, Separator } from "../components/display";
 import { Checkbox, Field, Input, OtpInput } from "../components/form";
 import { fill, type Labels } from "../components/labels";
-import { cn, KoraLink, useKora, useLabels, useSubmit, type Brand } from "../components/provider";
+import { BrandLogo, cn, KoraLink, useKora, useLabels, useSubmit, type Brand } from "../components/provider";
 
 export type AuthScreenProps = {
-  brand?: Brand;
+  /** Defaults to the KoraProvider brand. `null` hides it, for a page that already shows the brand around the form. */
+  brand?: Brand | null;
   /** Text overrides. Defaults come from the KoraProvider locale. */
   labels?: Partial<Labels>;
   /** Replaces the default failure message, for example with a backend message. */
@@ -40,12 +41,12 @@ export function AuthLayout({ brand, title, description, variant = "centered", as
   children: ReactNode;
 }) {
   const fallback = useKora().brand;
-  const b = brand ?? fallback;
+  const b = brand === null ? undefined : (brand ?? fallback);
   const panel = (
     <main className="kr:mx-auto kr:w-full kr:max-w-sm">
       {b && (
         <div className="kr:mb-6 kr:flex kr:items-center kr:gap-2 kr:text-sm kr:font-semibold kr:text-fg">
-          {b.logo}
+          <BrandLogo logo={b.logo} />
           <span>{b.name}</span>
         </div>
       )}
@@ -84,8 +85,10 @@ export type AuthProvider = string | { id: string; label: string; icon?: ReactNod
 
 export type LoginValues = { email: string; password: string };
 
-export function LoginScreen({ onSubmit, providers, onProvider, onMagicLink, links, ...rest }: AuthScreenProps & {
+export function LoginScreen({ onSubmit, providers, onProvider, onMagicLink, links, footer, ...rest }: AuthScreenProps & {
   onSubmit: (values: LoginValues) => unknown;
+  /** Line under the form, such as how to ask for access. Replaces the register link line. */
+  footer?: ReactNode;
   providers?: AuthProvider[];
   onProvider?: (id: string) => unknown;
   onMagicLink?: (values: { email: string }) => unknown;
@@ -125,11 +128,11 @@ export function LoginScreen({ onSubmit, providers, onProvider, onMagicLink, link
       {...layoutProps(rest)}
       title={t.loginTitle}
       description={t.loginDescription}
-      footer={links?.register && (
+      footer={footer ?? (links?.register && (
         <>
           {t.noAccount} <TextLink href={links.register}>{t.createAccountLink}</TextLink>
         </>
-      )}
+      ))}
     >
       <FormError>{failure}</FormError>
       {magicSent && <Alert tone="success" className="kr:mb-4">{t.magicLinkSent}</Alert>}

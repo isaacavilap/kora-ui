@@ -1,5 +1,5 @@
 import { useId } from "react";
-import type { ReactNode } from "react";
+import type { HTMLAttributes, ReactNode } from "react";
 import { Progress as RadixProgress } from "radix-ui";
 import { ArrowDownRight, ArrowRight, ArrowUpRight } from "lucide-react";
 import { Card } from "./display";
@@ -57,18 +57,20 @@ export function Delta({ value, invert, label, className }: {
   );
 }
 
-export function KpiCard({ label, value, delta, deltaLabel, invertDelta, trend, loading, className }: {
+export function KpiCard({ label, value, delta, deltaLabel, invertDelta, trend, hint, loading, className, ...props }: Omit<HTMLAttributes<HTMLDivElement>, "children"> & {
   label: ReactNode;
   value: ReactNode;
   delta?: number;
   deltaLabel?: ReactNode;
   invertDelta?: boolean;
   trend?: number[];
+  /** A note under the value, when there is no percent change to show. */
+  hint?: ReactNode;
   loading?: boolean;
   className?: string;
 }) {
   return (
-    <Card className={cn("kr:p-4", className)} aria-busy={loading || undefined}>
+    <Card className={cn("kr:p-4", props.onClick && "kr:cursor-pointer kr:hover:border-line-strong", className)} aria-busy={loading || undefined} {...props}>
       <p className="kr:text-[0.8125rem] kr:text-muted">{label}</p>
       {loading ? (
         <>
@@ -78,10 +80,11 @@ export function KpiCard({ label, value, delta, deltaLabel, invertDelta, trend, l
       ) : (
         <>
           <div className="kr:mt-1 kr:flex kr:flex-wrap kr:items-end kr:justify-between kr:gap-x-3 kr:gap-y-1">
-            <p className="kr:min-w-0 kr:truncate kr:text-2xl kr:font-semibold kr:text-fg kr:tabular-nums">{value}</p>
+            <p className="kr:min-w-0 kr:wrap-anywhere kr:text-2xl kr:font-semibold kr:text-fg kr:tabular-nums">{value}</p>
             {trend && <Sparkline data={trend} />}
           </div>
           {delta !== undefined && <Delta value={delta} invert={invertDelta} label={deltaLabel} className="kr:mt-1" />}
+          {hint && <div className="kr:mt-1 kr:text-[0.8125rem] kr:text-muted">{hint}</div>}
         </>
       )}
     </Card>
@@ -93,28 +96,68 @@ export type Stat = { label: ReactNode; value: ReactNode; delta?: number; invertD
 /** One card with several numbers. Two columns on phones, one row from 768px. */
 export function StatGroup({ stats, className }: { stats: Stat[]; className?: string }) {
   return (
-    <Card className={cn("kr:grid kr:grid-cols-2 kr:gap-px kr:overflow-hidden kr:bg-line kr:md:flex", className)}>
-      {stats.map((s, i) => (
-        <div key={i} className="kr:min-w-0 kr:flex-1 kr:bg-surface kr:p-4">
-          <p className="kr:truncate kr:text-[0.8125rem] kr:text-muted">{s.label}</p>
-          <p className="kr:mt-1 kr:text-lg kr:font-semibold kr:text-fg kr:tabular-nums">{s.value}</p>
-          {s.delta !== undefined && <Delta value={s.delta} invert={s.invertDelta} />}
-        </div>
-      ))}
+    <Card className={cn("kr:overflow-hidden", className)}>
+      {/* The negative margin hides the borders on the outer edge, at any number of columns. */}
+      <div className="kr:-mt-px kr:-ml-px kr:grid kr:grid-cols-2 kr:md:auto-cols-fr kr:md:grid-flow-col kr:md:grid-cols-none">
+        {stats.map((s, i) => (
+          <div key={i} className="kr:min-w-0 kr:border-t kr:border-l kr:border-line kr:p-4">
+            <p className="kr:truncate kr:text-[0.8125rem] kr:text-muted">{s.label}</p>
+            <div className="kr:mt-1 kr:flex kr:flex-wrap kr:items-baseline kr:gap-x-2">
+              <p className="kr:text-xl kr:font-semibold kr:text-fg kr:tabular-nums">{s.value}</p>
+              {s.delta !== undefined && <Delta value={s.delta} invert={s.invertDelta} />}
+            </div>
+          </div>
+        ))}
+      </div>
     </Card>
   );
 }
 
-export function Progress({ value, max = 100, label, showValue, tone = "accent", className }: {
+type ProgressTone = "accent" | "success" | "warning" | "danger";
+export type ProgressRange = {
+  /** The range ends at this value, in the same unit as `value`. */
+  upTo: number;
+  tone: ProgressTone;
+};
+
+const toneColor = (tone: ProgressTone) => `var(--kora-${tone})`;
+
+/** The tone of the first range that contains the value. Values above the last range use its tone. */
+export function rangeTone(value: number, ranges: ProgressRange[], fallback: ProgressTone = "accent") {
+  const sorted = [...ranges].sort((a, b) => a.upTo - b.upTo);
+  return (sorted.find((r) => value <= r.upTo) ?? sorted[sorted.length - 1])?.tone ?? fallback;
+}
+
+/** A gradient for the whole track, with each tone at the middle of its range. */
+export function progressGradient(max: number, ranges: ProgressRange[], tone: ProgressTone) {
+  if (!ranges.length) return `linear-gradient(90deg, color-mix(in oklab, ${toneColor(tone)} 35%, transparent), ${toneColor(tone)})`;
+  let from = 0;
+  const stops = [...ranges].sort((a, b) => a.upTo - b.upTo).map((r) => {
+    const middle = ((from + Math.min(r.upTo, max)) / 2 / max) * 100;
+    from = r.upTo;
+    return `${toneColor(r.tone)} ${middle}%`;
+  });
+  return `linear-gradient(90deg, ${stops.join(", ")})`;
+}
+
+/** A bar. With `ranges`, it takes its color from the value. */
+export function Progress({ value, max = 100, label, showValue, tone = "accent", ranges = [], fill = "solid", segments = 10, className }: {
   value: number;
   max?: number;
   label?: ReactNode;
   showValue?: boolean;
-  tone?: "accent" | "success" | "warning" | "danger";
+  tone?: ProgressTone;
+  /** Colors by value, such as [{ upTo: 50, tone: "danger" }, { upTo: 80, tone: "warning" }, { upTo: 100, tone: "success" }]. */
+  ranges?: ProgressRange[];
+  /** "solid" is one color. "gradient" blends the ranges. "segments" draws separate pieces. */
+  fill?: "solid" | "gradient" | "segments";
+  /** The number of pieces when fill is "segments". */
+  segments?: number;
   className?: string;
 }) {
   const percent = Math.min(100, Math.max(0, (value / max) * 100));
   const labelId = useId();
+  const painted = Math.round((percent / 100) * segments);
   return (
     <div className={className}>
       {(label || showValue) && (
@@ -123,14 +166,34 @@ export function Progress({ value, max = 100, label, showValue, tone = "accent", 
           {showValue && <span className="kr:text-muted kr:tabular-nums">{Math.round(percent)}%</span>}
         </div>
       )}
-      <RadixProgress.Root value={value} max={max} aria-labelledby={label ? labelId : undefined} className="kr:h-1.5 kr:overflow-hidden kr:rounded-full kr:bg-surface-2">
-        <RadixProgress.Indicator
-          className={cn(
-            "kr:h-full kr:rounded-full kr:transition-[width]",
-            { accent: "kr:bg-accent", success: "kr:bg-success", warning: "kr:bg-warning", danger: "kr:bg-danger" }[tone],
-          )}
-          style={{ width: `${percent}%` }}
-        />
+      <RadixProgress.Root
+        value={value}
+        max={max}
+        aria-labelledby={label ? labelId : undefined}
+        className={cn("kr:h-1.5", fill === "segments" ? "kr:flex kr:gap-0.5" : "kr:overflow-hidden kr:rounded-full kr:bg-surface-2")}
+      >
+        {fill === "segments" ? (
+          Array.from({ length: segments }, (_, i) => (
+            <span
+              key={i}
+              aria-hidden
+              className="kr:min-w-0 kr:flex-1 kr:rounded-[1px] kr:bg-surface-2"
+              // Each piece keeps the color of its own place in the ranges.
+              style={i < painted ? { background: toneColor(rangeTone(((i + 1) / segments) * max, ranges, tone)) } : undefined}
+            />
+          ))
+        ) : (
+          <RadixProgress.Indicator
+            className="kr:h-full kr:rounded-full kr:transition-[width]"
+            style={{
+              width: `${percent}%`,
+              // The gradient keeps the size of the whole track, so a short bar shows only its first part.
+              ...(fill === "gradient"
+                ? { backgroundImage: progressGradient(max, ranges, tone), backgroundSize: percent > 0 ? `${10000 / percent}% 100%` : undefined }
+                : { background: toneColor(rangeTone(value, ranges, tone)) }),
+            }}
+          />
+        )}
       </RadixProgress.Root>
     </div>
   );

@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Alert, Button, Card, CardContent, CardHeader, Combobox, DocumentList, Field, FileDropzone, Grid, Input, PageHeader, Select, Switch, Textarea, Toaster, toast, useSubmit, type DocumentItem } from "kora-ui";
+import { Alert, Button, Card, CardContent, CardHeader, Combobox, DocumentList, Field, Fieldset, FileDropzone, Form, Grid, Input, PageHeader, Select, Stack, Switch, Text, Textarea, Toaster, toast, useSubmit, type DocumentItem } from "kora-ui";
 import { Plus, Trash2 } from "lucide-react";
 import { money, wait } from "@/lib/demo-data";
 import { DemoShell } from "./shell";
@@ -30,7 +30,8 @@ export default function Template() {
   return (
     <DemoShell page="record-form" title="New request">
       <Toaster />
-      <form
+      <Form
+        className="block"
         noValidate
         onSubmit={(e) => {
           e.preventDefault();
@@ -48,7 +49,7 @@ export default function Template() {
         {missing.length > 0 && <Alert tone="danger" title="Some fields are missing" className="mb-4">Complete these fields: {missing.join(", ")}.</Alert>}
         {save.error && <Alert tone="danger" className="mb-4">{save.error}</Alert>}
         <Grid cols="2fr 1fr">
-          <div className="grid min-w-0 content-start gap-[var(--kora-gap)]">
+          <Stack>
             <Card>
               <CardHeader title="What is needed" />
               <CardContent className="grid gap-4">
@@ -67,15 +68,14 @@ export default function Template() {
               />
               <CardContent className="grid gap-3">
                 {lines.map((line, i) => (
-                  <fieldset key={line.key} className="grid grid-cols-[1fr_1fr_auto] items-end gap-2 md:grid-cols-[3fr_1fr_1fr_auto]">
-                    <legend className="sr-only">Item {i + 1}</legend>
+                  <Fieldset key={line.key} legend={`Item ${i + 1}`} className="grid-cols-[1fr_1fr_auto] items-end gap-2 md:grid-cols-[3fr_1fr_1fr_auto] [&>legend]:sr-only">
                     <Field label="Item" className="col-span-3 md:col-span-1"><Input value={line.item} onChange={(e) => setLine(line.key, { item: e.target.value })} /></Field>
                     <Field label="Qty"><Input type="number" min="1" inputMode="numeric" value={line.quantity} onChange={(e) => setLine(line.key, { quantity: e.target.value })} /></Field>
                     <Field label="Price"><Input type="number" min="0" step="0.01" inputMode="decimal" value={line.price} onChange={(e) => setLine(line.key, { price: e.target.value })} /></Field>
                     <Button type="button" variant="ghost" size="icon" aria-label={`Remove item ${i + 1}`} disabled={lines.length === 1} onClick={() => setLines(lines.filter((l) => l.key !== line.key))}><Trash2 aria-hidden /></Button>
-                  </fieldset>
+                  </Fieldset>
                 ))}
-                <p className="text-right text-sm font-medium tabular-nums">Total: {money(total)}</p>
+                <Text strong className="text-right tabular-nums">Total: {money(total)}</Text>
               </CardContent>
             </Card>
             <Card>
@@ -87,7 +87,7 @@ export default function Template() {
                 {documents.length > 0 && <DocumentList documents={documents} onRemove={(doc) => setDocuments(documents.filter((d) => d.id !== doc.id))} />}
               </CardContent>
             </Card>
-          </div>
+          </Stack>
           <Card className="self-start">
             <CardHeader title="Assignment" />
             <CardContent className="grid gap-4">
@@ -104,7 +104,7 @@ export default function Template() {
             </CardContent>
           </Card>
         </Grid>
-      </form>
+      </Form>
     </DemoShell>
   );
 }

@@ -1,10 +1,10 @@
 "use client";
-import { Button } from "kora-ui";
+import { Button, Inline } from "kora-ui";
 import { Download, Plus } from "lucide-react";
 
 export default function Demo() {
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <Inline>
       <Button><Plus aria-hidden />New order</Button>
       <Button variant="secondary"><Download aria-hidden />Export</Button>
       <Button variant="ghost">Cancel</Button>
@@ -12,7 +12,7 @@ export default function Demo() {
       <Button loading>Saving</Button>
       <Button size="sm" variant="secondary">Small</Button>
       <Button size="icon" variant="secondary" aria-label="Add"><Plus aria-hidden /></Button>
-    </div>
+    </Inline>
   );
 }
 

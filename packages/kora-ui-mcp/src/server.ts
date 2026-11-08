@@ -3,7 +3,7 @@ import * as z from "zod/v4";
 import catalog from "./catalog.json";
 
 type Prop = { name: string; type: string; description: string };
-type Component = { slug: string; name: string; description: string; from: string; group: string; props?: Prop[]; example?: string };
+type Component = { slug: string; name: string; description: string; notes?: string; from: string; group: string; props?: Prop[]; example?: string };
 type Template = { slug: string; name: string; group: string; from: string; description: string; source: string };
 
 const components = catalog.components as Component[];
@@ -20,6 +20,11 @@ Setup
 - Without Tailwind: import "kora-ui/styles.css" once in the root layout.
 - Wrap the app in KoraProvider. Next.js: <KoraProvider linkComponent={Link} locale="es" brand={{ name, logo }}>. It must be in a "use client" file.
 - Add <ThemeScript /> in <head>, and suppressHydrationWarning on <html>, so the saved theme applies before the first paint.
+
+Native tags
+- Never write native tags such as div, form, p, span, h1, ul, a, or section in a page. The npm script check:tags fails if you do.
+- Use Box, Stack, Inline, Grid, List, ListItem, Form, FormActions, Fieldset, Text, Heading, and KoraLink.
+- A real exception is the svg of a logo.
 
 Entry points
 - kora-ui: layout, forms, overlays, widgets, KPIs
@@ -85,7 +90,7 @@ export function createServer() {
       const props = component.props?.map((p) => `- ${p.name}: ${p.type}. ${p.description}`).join("\n");
       return text([
         `# ${component.name}`,
-        component.description,
+        component.notes ? `${component.description} ${component.notes}` : component.description,
         `Import from "${component.from}".`,
         props && `Props:\n${props}`,
         component.example && `Example:\n\`\`\`tsx\n${component.example}\n\`\`\``,

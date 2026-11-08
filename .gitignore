@@ -16,6 +16,8 @@ build-storybook.log
 /org
 CLAUDE.md
 
+# Prototypes can hold internal data
+
 # Env files
 .env
 .env.local

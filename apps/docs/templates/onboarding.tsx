@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Checkbox, Field, Input, Select } from "kora-ui";
+import { Checkbox, Field, Input, Select, Stack } from "kora-ui";
 import { OnboardingWizard } from "kora-ui/screens";
 import { wait } from "@/lib/demo-data";
 import { brand } from "./logo";
@@ -24,14 +24,14 @@ export default function Template() {
             return Boolean(store.trim());
           },
           content: (
-            <div className="grid gap-4">
+            <Stack gap="md">
               <Field label="Store name" error={storeError} required>
                 <Input value={store} onChange={(e) => setStore(e.target.value)} />
               </Field>
               <Field label="Currency">
                 <Select defaultValue="usd" options={[{ value: "usd", label: "US dollar" }, { value: "eur", label: "Euro" }]} />
               </Field>
-            </div>
+            </Stack>
           ),
         },
         {
@@ -44,11 +44,11 @@ export default function Template() {
           title: "Choose alerts",
           description: "Pick what should reach your inbox.",
           content: (
-            <div className="grid justify-start gap-3">
+            <Stack className="justify-start gap-3">
               <Checkbox label="Failed payments" defaultChecked />
               <Checkbox label="Daily sales summary" />
               <Checkbox label="New team members" defaultChecked />
-            </div>
+            </Stack>
           ),
         },
       ]}

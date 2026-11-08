@@ -47,6 +47,8 @@ export type CartesianChartProps = ChartStateProps & {
   series: ChartSeries[];
   xFormat?: (value: string) => string;
   valueFormat?: Format;
+  /** Whole-number ticks on the value axis, for counts. */
+  integer?: boolean;
 };
 
 function Frame({ summary, height = 260, loading, error, onRetry, empty, isEmpty, className, legend, table, children }: ChartStateProps & {
@@ -152,7 +154,7 @@ function useFormats(valueFormat?: Format) {
 
 const axisTick = { fill: "var(--kora-muted)", fontSize: 12 };
 
-function axes(x: string, xFormat: CartesianChartProps["xFormat"], axisFormat: Format) {
+function axes(x: string, xFormat: CartesianChartProps["xFormat"], axisFormat: Format, integer?: boolean) {
   return [
     <CartesianGrid key="grid" vertical={false} stroke="var(--kora-line)" />,
     <XAxis
@@ -166,7 +168,7 @@ function axes(x: string, xFormat: CartesianChartProps["xFormat"], axisFormat: Fo
       interval="preserveStartEnd"
       tickMargin={6}
     />,
-    <YAxis key="y" tick={axisTick} tickFormatter={axisFormat} axisLine={false} tickLine={false} width="auto" />,
+    <YAxis key="y" tick={axisTick} tickFormatter={axisFormat} allowDecimals={!integer} axisLine={false} tickLine={false} width="auto" />,
   ];
 }
 
@@ -176,14 +178,14 @@ function resolved(series: ChartSeries[]) {
 
 const margin = { top: 6, right: 8, bottom: 0, left: 0 };
 
-export function LineChart({ data, x, series, xFormat, valueFormat, ...state }: CartesianChartProps) {
+export function LineChart({ data, x, series, xFormat, valueFormat, integer, ...state }: CartesianChartProps) {
   const f = useFormats(valueFormat);
   const items = resolved(series);
   return (
     <Frame {...state} isEmpty={data.length === 0} legend={<Legend items={items} />} table={<DataTableFallback summary={state.summary} data={data} x={x} series={series} />}>
       <ResponsiveContainer width="100%" height="100%">
         <RLineChart data={data} margin={margin}>
-          {axes(x, xFormat, f.axis)}
+          {axes(x, xFormat, f.axis, integer)}
           <Tooltip cursor={{ stroke: "var(--kora-line-strong)" }} content={(p) => <ChartTooltip {...(p as object)} xFormat={xFormat} format={f.value} />} />
           {items.map((s) => (
             <Line key={s.key} dataKey={s.key} name={s.label} stroke={s.color} strokeWidth={2} dot={false} activeDot={{ r: 4, strokeWidth: 2, stroke: "var(--kora-surface)" }} isAnimationActive={false} />
@@ -194,14 +196,14 @@ export function LineChart({ data, x, series, xFormat, valueFormat, ...state }: C
   );
 }
 
-export function AreaChart({ data, x, series, xFormat, valueFormat, stacked, ...state }: CartesianChartProps & { stacked?: boolean }) {
+export function AreaChart({ data, x, series, xFormat, valueFormat, integer, stacked, ...state }: CartesianChartProps & { stacked?: boolean }) {
   const f = useFormats(valueFormat);
   const items = resolved(series);
   return (
     <Frame {...state} isEmpty={data.length === 0} legend={<Legend items={items} />} table={<DataTableFallback summary={state.summary} data={data} x={x} series={series} />}>
       <ResponsiveContainer width="100%" height="100%">
         <RAreaChart data={data} margin={margin}>
-          {axes(x, xFormat, f.axis)}
+          {axes(x, xFormat, f.axis, integer)}
           <Tooltip cursor={{ stroke: "var(--kora-line-strong)" }} content={(p) => <ChartTooltip {...(p as object)} xFormat={xFormat} format={f.value} />} />
           {items.map((s) => (
             <Area key={s.key} dataKey={s.key} name={s.label} stackId={stacked ? "stack" : undefined} stroke={s.color} strokeWidth={2} fill={s.color} fillOpacity={0.14} activeDot={{ r: 4, strokeWidth: 2, stroke: "var(--kora-surface)" }} isAnimationActive={false} />
@@ -212,14 +214,14 @@ export function AreaChart({ data, x, series, xFormat, valueFormat, stacked, ...s
   );
 }
 
-export function BarChart({ data, x, series, xFormat, valueFormat, stacked, ...state }: CartesianChartProps & { stacked?: boolean }) {
+export function BarChart({ data, x, series, xFormat, valueFormat, integer, stacked, ...state }: CartesianChartProps & { stacked?: boolean }) {
   const f = useFormats(valueFormat);
   const items = resolved(series);
   return (
     <Frame {...state} isEmpty={data.length === 0} legend={<Legend items={items} />} table={<DataTableFallback summary={state.summary} data={data} x={x} series={series} />}>
       <ResponsiveContainer width="100%" height="100%">
         <RBarChart data={data} margin={margin} barGap={2} barCategoryGap="28%">
-          {axes(x, xFormat, f.axis)}
+          {axes(x, xFormat, f.axis, integer)}
           <Tooltip cursor={{ fill: "var(--kora-surface-2)" }} content={(p) => <ChartTooltip {...(p as object)} xFormat={xFormat} format={f.value} />} />
           {items.map((s, i) => (
             <Bar

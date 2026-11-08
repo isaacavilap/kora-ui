@@ -1,7 +1,9 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { AppShell, BottomNav, SaveBar, Sidebar, SidebarGroup, SidebarItem, SidebarSection, Topbar } from "./layout";
+import { DropdownMenuItem } from "./overlay";
+import { UserMenu } from "./shell-tools";
+import { AppShell, BottomNav, Box, Fieldset, Heading, List, ListItem, SaveBar, Text, Sidebar, SidebarGroup, SidebarItem, SidebarSection, Topbar } from "./layout";
 import { CommandPalette, filterCommands } from "./shell-tools";
 
 const shell = (active = false, props = {}) => (
@@ -60,9 +62,9 @@ describe("Sidebar", () => {
 
   it("removes the column in hidden mode", async () => {
     render(shell(false, { collapseMode: "hidden" }));
-    expect(document.querySelector("aside")!.className).toContain("kr:lg:block");
+    expect(document.querySelector("aside")!.parentElement!.className).toContain("kr:lg:block");
     await userEvent.click(screen.getByRole("button", { name: "Collapse sidebar", hidden: true }));
-    expect(document.querySelector("aside")!.className).not.toContain("kr:lg:block");
+    expect(document.querySelector("aside")!.parentElement!.className).not.toContain("kr:lg:block");
   });
 
   it("does not save a controlled state", async () => {
@@ -96,6 +98,19 @@ describe("CommandPalette", () => {
   });
 });
 
+describe("CommandPalette remote results", () => {
+  it("reports the text, shows descriptions, and resets the text on close", async () => {
+    const onQueryChange = vi.fn();
+    render(<CommandPalette items={[{ id: "r", label: "Pago 123", keywords: "abc", description: "Ana" }]} onQueryChange={onQueryChange} />);
+    await userEvent.keyboard("{Control>}k{/Control}");
+    await userEvent.type(await screen.findByRole("combobox"), "abc");
+    expect(onQueryChange).toHaveBeenLastCalledWith("abc");
+    expect(screen.getByRole("option").textContent).toContain("Ana");
+    await userEvent.keyboard("{Escape}");
+    expect(onQueryChange).toHaveBeenLastCalledWith("");
+  });
+});
+
 describe("BottomNav", () => {
   it("marks the current page, and opens the sidebar for the rest", async () => {
     render(shell(false, { bottomNav: <BottomNav items={[{ href: "/home", label: "Inicio", icon: null, active: true }]} /> }));
@@ -109,11 +124,12 @@ describe("BottomNav", () => {
 describe("BottomNav current page", () => {
   const nav = (active: boolean) => shell(false, { bottomNav: <BottomNav items={[{ href: "/home", label: "Inicio", icon: null, active }]} /> });
 
-  it("colors the active item, with no muted class to override it", () => {
+  it("colors only the icon of the active item, with no muted class to override it", () => {
     render(nav(true));
     const link = screen.getByRole("navigation", { name: "Main" }).querySelector("[aria-current=page]")!;
-    expect(link.className).toContain("kr:text-accent");
+    expect(link.className).not.toContain("kr:text-accent");
     expect(link.className).not.toContain("kr:text-muted");
+    expect(link.querySelector(".kr\\:text-accent")).toBeTruthy();
   });
 
   it("marks More for a page outside the bottom menu", () => {
@@ -131,5 +147,57 @@ describe("SaveBar", () => {
     await userEvent.click(screen.getByRole("button", { name: "Discard" }));
     expect(onDiscard).toHaveBeenCalledOnce();
     expect(screen.getByRole("button", { name: "Save changes" }).getAttribute("type")).toBe("submit");
+  });
+});
+
+describe("layout and text components", () => {
+  it("renders the requested tags", () => {
+    render(<><Box as="section" aria-label="Area" /><List ordered><ListItem>One</ListItem></List><Fieldset legend="Group" /></>);
+    expect(screen.getByRole("region", { name: "Area" }).tagName).toBe("SECTION");
+    expect(screen.getByRole("list").tagName).toBe("OL");
+    expect(screen.getByRole("group", { name: "Group" }).tagName).toBe("FIELDSET");
+  });
+
+  it("renders the requested heading level and the inline text tag", () => {
+    render(<><Heading level={3}>Title</Heading><Text inline>Word</Text><Text>Line</Text></>);
+    expect(screen.getByRole("heading", { level: 3, name: "Title" })).toBeTruthy();
+    expect(screen.getByText("Word").tagName).toBe("SPAN");
+    expect(screen.getByText("Line").tagName).toBe("P");
+  });
+});
+
+describe("UserMenu", () => {
+  it("opens a menu with the name and the items", async () => {
+    render(<UserMenu name="Ana" email="ana@ejemplo.com" seed="1"><DropdownMenuItem>Sign out</DropdownMenuItem></UserMenu>);
+    await userEvent.click(screen.getByRole("button", { name: "Account menu: Ana" }));
+    expect(screen.getByRole("menuitem", { name: "Sign out" })).toBeTruthy();
+    expect(screen.getByText("ana@ejemplo.com")).toBeTruthy();
+  });
+
+  it("chooses the theme and the text size, and keeps them on this device", async () => {
+    const store = new Map<string, string>();
+    vi.stubGlobal("localStorage", {
+      getItem: (key: string) => store.get(key) ?? null,
+      setItem: (key: string, value: string) => store.set(key, value),
+      removeItem: (key: string) => store.delete(key),
+    });
+    render(<UserMenu name="Ana" seed="1"><DropdownMenuItem>Sign out</DropdownMenuItem></UserMenu>);
+    await userEvent.click(screen.getByRole("button", { name: "Account menu: Ana" }));
+    expect(screen.getByRole("menuitemradio", { name: "System" }).getAttribute("aria-checked")).toBe("true");
+    await userEvent.click(screen.getByRole("menuitemradio", { name: "Dark" }));
+    expect(document.documentElement.classList.contains("dark")).toBe(true);
+    expect(localStorage.getItem("kora-theme")).toBe("dark");
+    // The menu stays open, so the second choice is one more click.
+    await userEvent.click(screen.getByRole("menuitemradio", { name: "18 px" }));
+    expect(document.documentElement.style.fontSize).toBe("112.5%");
+    expect(localStorage.getItem("kora-text-size")).toBe("112.5");
+    await userEvent.click(screen.getByRole("menuitemradio", { name: "System" }));
+    expect(localStorage.getItem("kora-theme")).toBeNull();
+  });
+
+  it("leaves them out when asked", async () => {
+    render(<UserMenu name="Ana" preferences={false}><DropdownMenuItem>Sign out</DropdownMenuItem></UserMenu>);
+    await userEvent.click(screen.getByRole("button", { name: "Account menu: Ana" }));
+    expect(screen.queryByRole("menuitemradio")).toBeNull();
   });
 });

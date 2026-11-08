@@ -38,18 +38,18 @@
   :root {
     color-scheme: light;
     --kora-font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    --kora-radius: 6px;
-    --kora-bg: #f4f6f5;
+    --kora-radius: 8px;
+    --kora-bg: #ffffff;
     --kora-surface: #ffffff;
-    --kora-surface-2: #eef1ef;
-    --kora-line: #dde2df;
-    --kora-line-strong: #a3aeaa;
-    --kora-fg: #171c1a;
-    --kora-muted: #56615c;
-    --kora-accent: #11756b;
-    --kora-accent-hover: #0d5f57;
-    --kora-accent-fg: #ffffff;
-    --kora-accent-soft: #dcefec;
+    --kora-surface-2: #f4f4f5;
+    --kora-line: #e4e4e7;
+    --kora-line-strong: #d4d4d8;
+    --kora-fg: #09090b;
+    --kora-muted: #66666e;
+    --kora-accent: #18181b;
+    --kora-accent-hover: #27272a;
+    --kora-accent-fg: #fafafa;
+    --kora-accent-soft: #f4f4f5;
     --kora-success: #14703f;
     --kora-success-soft: #dff1e6;
     --kora-warning: #8f5200;
@@ -59,7 +59,7 @@
     --kora-danger-soft: #fae3e1;
     --kora-info: #1f62b8;
     --kora-info-soft: #e0ecfa;
-    --kora-shadow: 0 8px 28px rgb(23 28 26 / 0.16);
+    --kora-shadow: 0 8px 28px rgb(9 9 11 / 0.14);
     --kora-chart-1: #2a78d6;
     --kora-chart-2: #eb6834;
     --kora-chart-3: #1baf7a;
@@ -71,19 +71,26 @@
     --kora-cell-y: 0.75rem;
   }
 
+  /* A page framed by AppShell fills the screen exactly: without this, the browser's default 8px body margin makes it
+     16px taller than the window, so it always scrolls and the sticky sidebar's footer is cut. The stable gutter keeps
+     the layout from jumping sideways when a page grows enough to show the scrollbar (classic scrollbars on Windows and
+     macOS with a mouse). :where keeps both rules at zero specificity, so an app can override them. */
+  :where(body:has([data-kora-shell])) { margin: 0; }
+  :where(html:has([data-kora-shell])) { scrollbar-gutter: stable; }
+
   .dark {
     color-scheme: dark;
-    --kora-bg: #111413;
-    --kora-surface: #1a1e1c;
-    --kora-surface-2: #252a28;
-    --kora-line: #2f3532;
-    --kora-line-strong: #65716c;
-    --kora-fg: #e9ecea;
-    --kora-muted: #a2ada8;
-    --kora-accent: #3cc4b1;
-    --kora-accent-hover: #5dd3c2;
-    --kora-accent-fg: #06231f;
-    --kora-accent-soft: #15332f;
+    --kora-bg: #09090b;
+    --kora-surface: #111113;
+    --kora-surface-2: #27272a;
+    --kora-line: #27272a;
+    --kora-line-strong: #3f3f46;
+    --kora-fg: #fafafa;
+    --kora-muted: #a1a1aa;
+    --kora-accent: #fafafa;
+    --kora-accent-hover: #e4e4e7;
+    --kora-accent-fg: #18181b;
+    --kora-accent-soft: #27272a;
     --kora-success: #4cc38a;
     --kora-success-soft: #15301f;
     --kora-warning: #e5a93b;
@@ -120,6 +127,13 @@
     [data-density="compact"] {
       --kora-control-h: 2rem;
       --kora-cell-y: 0.3125rem;
+    }
+  }
+
+  /* Toasts render in a portal, outside AppShell: they read the bottom menu's height from the root to sit above it. */
+  @media (max-width: 63.999rem) {
+    :root:has([data-kora-bottom-nav]) {
+      --kora-bottom-nav: calc(3.5rem + env(safe-area-inset-bottom));
     }
   }
 
@@ -176,6 +190,12 @@
   }
   @keyframes kr-spin {
     to { transform: rotate(360deg); }
+  }
+  @keyframes kr-float {
+    50% { transform: translateY(-5px); }
+  }
+  @keyframes kr-bob {
+    40% { transform: translateY(-10px) scale(1.06); }
   }
   @keyframes kr-pulse {
     50% { opacity: 0.5; }

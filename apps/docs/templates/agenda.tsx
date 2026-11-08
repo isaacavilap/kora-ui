@@ -1,6 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
-import { Button, DescriptionList, Dialog, DialogContent, EventCalendar, Field, Input, PageHeader, Select, Sheet, SheetContent, Toaster, toast, type CalendarEvent } from "kora-ui";
+import { Button, DescriptionList, Dialog, DialogContent, EventCalendar, Field, Form, Input, PageHeader, Select, Sheet, SheetContent, Stack, Toaster, toast, type CalendarEvent } from "kora-ui";
 import { Plus } from "lucide-react";
 import { DemoShell } from "./shell";
 
@@ -38,12 +38,12 @@ export default function Template() {
         description="Visits and deliveries at every location."
         actions={<Button onClick={() => setAdding(toInput(new Date()))} className="max-md:w-full"><Plus aria-hidden />Schedule a visit</Button>}
       />
-      <EventCalendar events={visits} onEventClick={(event) => setViewing(event as Visit)} onDayClick={(day) => setAdding(toInput(day))} />
+      <EventCalendar events={visits} onEventClick={(event) => setViewing(event as Visit)} onAddEvent={(day) => setAdding(toInput(day))} />
 
       <Sheet open={Boolean(viewing)} onOpenChange={(open) => !open && setViewing(undefined)}>
         <SheetContent title={viewing?.title} description={viewing?.location}>
           {viewing && (
-            <div className="grid gap-4">
+            <Stack gap="md">
               <DescriptionList
                 items={[
                   { label: "Date", value: new Date(viewing.date).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) },
@@ -61,15 +61,14 @@ export default function Template() {
               >
                 Cancel visit
               </Button>
-            </div>
+            </Stack>
           )}
         </SheetContent>
       </Sheet>
 
       <Dialog open={Boolean(adding)} onOpenChange={(open) => !open && setAdding(undefined)}>
         <DialogContent title="Schedule a visit" description="It appears in the agenda of the location.">
-          <form
-            className="grid gap-4"
+          <Form
             onSubmit={(e) => {
               e.preventDefault();
               const form = new FormData(e.currentTarget);
@@ -79,13 +78,13 @@ export default function Template() {
             }}
           >
             <Field label="What is the visit for?"><Input name="title" required /></Field>
-            <div className="grid grid-cols-2 gap-3">
+            <Stack className="grid-cols-2 gap-3">
               <Field label="Date"><Input name="date" type="date" defaultValue={adding} required /></Field>
               <Field label="Time"><Input name="time" type="time" defaultValue="09:00" required /></Field>
-            </div>
+            </Stack>
             <Field label="Location"><Select value={location} onValueChange={setLocation} options={locations} /></Field>
             <Button type="submit" className="justify-self-end max-md:w-full">Schedule visit</Button>
-          </form>
+          </Form>
         </DialogContent>
       </Dialog>
     </DemoShell>

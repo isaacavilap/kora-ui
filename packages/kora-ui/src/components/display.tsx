@@ -2,6 +2,7 @@ import { Fragment, forwardRef } from "react";
 import type { HTMLAttributes, ReactNode } from "react";
 import { Avatar as RadixAvatar, Separator as RadixSeparator } from "radix-ui";
 import { AlertTriangle, CheckCircle2, Info, XCircle } from "lucide-react";
+import { GeneratedAvatar } from "./generated-avatar";
 import { cn } from "./provider";
 
 type DivProps = HTMLAttributes<HTMLDivElement>;
@@ -13,6 +14,8 @@ const tones = {
   warning: "kr:bg-warning-soft kr:text-warning",
   danger: "kr:bg-danger-soft kr:text-danger",
   info: "kr:bg-info-soft kr:text-info",
+  /** A ring with no fill, for states that are neither good nor bad, such as "new". */
+  outline: "kr:text-fg kr:shadow-[inset_0_0_0_1px_var(--kora-line-strong)]",
 };
 export type Tone = keyof typeof tones;
 
@@ -55,7 +58,7 @@ export function CardHeader({ className, title, description, actions, children, .
 }
 
 export function CardContent({ className, ...props }: DivProps) {
-  return <div className={cn("kr:p-4", className)} {...props} />;
+  return <div className={cn("kr:p-4 kr:space-y-[var(--kora-gap)]", className)} {...props} />;
 }
 
 export function CardFooter({ className, ...props }: DivProps) {
@@ -89,7 +92,15 @@ export function initials(name: string) {
   return ((words[0]?.[0] ?? "") + (words.length > 1 ? (words[words.length - 1]?.[0] ?? "") : "")).toUpperCase();
 }
 
-export function Avatar({ name, src, size = 32, className }: { name: string; src?: string; size?: number; className?: string }) {
+export function Avatar({ name, src, seed, size = 32, className }: {
+  name: string;
+  src?: string;
+  /** Usually the id of the person. With no photo, it draws a generated avatar in place of the initials. */
+  seed?: string;
+  size?: number;
+  className?: string;
+}) {
+  if (seed && !src) return <GeneratedAvatar seed={seed} size={size} label={name} className={className} />;
   return (
     <RadixAvatar.Root
       className={cn("kr:inline-flex kr:shrink-0 kr:items-center kr:justify-center kr:overflow-hidden kr:rounded-full kr:bg-surface-2 kr:font-medium kr:text-muted", className)}
@@ -98,6 +109,25 @@ export function Avatar({ name, src, size = 32, className }: { name: string; src?
       {src && <RadixAvatar.Image src={src} alt={name} className="kr:size-full kr:object-cover" />}
       <RadixAvatar.Fallback aria-label={name}>{initials(name)}</RadixAvatar.Fallback>
     </RadixAvatar.Root>
+  );
+}
+
+/** Splits a file name, so a long one can lose its middle and keep its extension. */
+export function splitFileName(name: string) {
+  const dot = name.lastIndexOf(".");
+  // A leading dot, or a very long "extension", is part of the name.
+  if (dot <= 0 || name.length - dot > 10) return { base: name, extension: "" };
+  return { base: name.slice(0, dot), extension: name.slice(dot) };
+}
+
+/** Shows a file name on one line. A long one looks like "report-2026....pdf", and the whole name appears on hover. */
+export function FileName({ name, className }: { name: string; className?: string }) {
+  const { base, extension } = splitFileName(name);
+  return (
+    <span title={name} className={cn("kr:flex kr:max-w-full kr:min-w-0", className)}>
+      <span className="kr:min-w-0 kr:truncate">{base}</span>
+      <span className="kr:shrink-0">{extension}</span>
+    </span>
   );
 }
 

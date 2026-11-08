@@ -1,5 +1,5 @@
 "use client";
-import { Avatar, Badge, DescriptionList, PageHeader } from "kora-ui";
+import { Avatar, Badge, DescriptionList, Inline, PageHeader } from "kora-ui";
 import { DataTable, type DataTableColumn } from "kora-ui/table";
 import { activityLog, type LogEntry } from "@/lib/demo-data";
 import { DemoShell } from "./shell";
@@ -15,10 +15,10 @@ const columns: DataTableColumn<LogEntry>[] = [
     sortable: true,
     filter: { type: "select" },
     cell: (l) => (
-      <span className="flex items-center gap-2">
+      <Inline wrap={false}>
         <Avatar name={l.actor} size={24} />
         {l.actor}
-      </span>
+      </Inline>
     ),
   },
   { id: "action", header: "Action", accessor: "action", filter: { type: "select" }, cell: (l) => <Badge tone={actionTone[l.action]}>{l.action}</Badge> },

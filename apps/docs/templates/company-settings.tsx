@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Card, CardContent, CardHeader, Field, FileDropzone, Grid, Input, PageHeader, SaveBar, SectionNav, Switch, Textarea, Toaster, toast } from "kora-ui";
+import { Card, CardContent, CardHeader, Field, FileDropzone, Form, Grid, Inline, Input, PageHeader, SaveBar, SectionNav, Stack, Switch, Text, Textarea, Toaster, toast } from "kora-ui";
 import { wait } from "@/lib/demo-data";
 import { DemoShell } from "./shell";
 
@@ -28,7 +28,8 @@ export default function Template() {
     <DemoShell page="company-settings" title="Company settings">
       <Toaster />
       <PageHeader title="Company settings" description="Each company has its own identity, documents, and modules." />
-      <form
+      <Form
+        className="block"
         key={version}
         onChange={() => setDirty(true)}
         onSubmit={async (e) => {
@@ -42,7 +43,7 @@ export default function Template() {
       >
         <Grid cols="12rem minmax(0, 1fr)">
           <SectionNav sections={sections} />
-          <div className="grid min-w-0 max-w-3xl gap-[var(--kora-gap)]">
+          <Stack className="max-w-3xl">
             <Card id="identity" className="scroll-mt-20">
               <CardHeader title="Identity" description="Shown in the menu and on documents." />
               <CardContent className="grid gap-4">
@@ -71,17 +72,17 @@ export default function Template() {
               <CardHeader title="Modules" description="Turned-off modules leave this company's menu. Their records stay." />
               <CardContent className="grid gap-4">
                 {allModules.map((module) => (
-                  <div key={module.id} className="flex items-center justify-between gap-4">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium">{module.label}</p>
-                      <p className="text-[0.8125rem] text-[var(--kora-muted)]">{module.description}</p>
-                    </div>
+                  <Inline key={module.id} gap="md" justify="between" wrap={false}>
+                    <Stack gap="none">
+                      <Text strong>{module.label}</Text>
+                      <Text size="sm" tone="muted">{module.description}</Text>
+                    </Stack>
                     <Switch aria-label={module.label} checked={modules[module.id]} onCheckedChange={(on) => { setModules({ ...modules, [module.id]: on }); setDirty(true); }} />
-                  </div>
+                  </Inline>
                 ))}
               </CardContent>
             </Card>
-          </div>
+          </Stack>
         </Grid>
         <SaveBar
           dirty={dirty}
@@ -92,7 +93,7 @@ export default function Template() {
             setDirty(false);
           }}
         />
-      </form>
+      </Form>
     </DemoShell>
   );
 }

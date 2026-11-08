@@ -1,6 +1,6 @@
 import { defineConfig } from "tsup";
 
-export default defineConfig({
+export default defineConfig((options) => ({
   entry: {
     index: "src/components/index.ts",
     table: "src/table/index.ts",
@@ -14,6 +14,7 @@ export default defineConfig({
   target: "es2020",
   treeshake: false,
   splitting: true,
-  clean: true,
+  // Watch mode keeps dist: cleaning wiped styles.css and broke running dev servers mid-rebuild.
+  clean: !options.watch,
   banner: { js: '"use client";' },
-});
+}));

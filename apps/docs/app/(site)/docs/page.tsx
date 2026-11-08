@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CodeBlock } from "@/components/code-block";
 
-export const metadata: Metadata = { title: "Get started" };
+export const metadata: Metadata = { title: "Get started", alternates: { canonical: "/docs" } };
 
 export default function GetStarted() {
   return (
@@ -18,7 +18,7 @@ cd my-app && npm install && npm run dev`} />
       <h2>Or add it to your project</h2>
 
       <h2>1. Install</h2>
-      <CodeBlock lang="bash" code="npm install kora-ui@next" />
+      <CodeBlock lang="bash" code="npm install kora-ui" />
 
       <h2>2. Import the styles</h2>
       <p>Import them once, at the top of your global CSS or root layout.</p>

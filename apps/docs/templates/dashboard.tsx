@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Badge, Button, Card, CardContent, CardHeader, DateRangePicker, Grid, KpiCard, PageHeader, Progress, type DateRange } from "kora-ui";
+import { Badge, Button, Card, CardContent, CardHeader, DateRangePicker, Grid, Heading, KpiCard, PageHeader, Progress, Stack, type DateRange } from "kora-ui";
 import { AreaChart, BarChart, DonutChart } from "kora-ui/charts";
 import { DataTable, type DataTableColumn } from "kora-ui/table";
 import { Download } from "lucide-react";
@@ -28,7 +28,7 @@ export default function Template() {
           </>
         }
       />
-      <div className="grid gap-[var(--kora-gap)]">
+      <Stack>
         <Grid min="10.5rem">
           <KpiCard label="Revenue" value="$84,300" delta={7.3} deltaLabel="vs November" trend={revenue.slice(-7).map((r) => r.revenue)} />
           <KpiCard label="Orders" value="1,482" delta={4.1} deltaLabel="vs November" trend={[1180, 1210, 1260, 1300, 1380, 1424, 1482]} />
@@ -71,12 +71,12 @@ export default function Template() {
               <BarChart summary="Costs for the last four months" data={revenue.slice(-4)} x="month" height={140} series={[{ key: "costs", label: "Costs" }]} />
             </CardContent>
           </Card>
-          <div className="min-w-0">
-            <h2 className="mb-2 text-sm font-semibold">Latest orders</h2>
+          <Stack gap="none">
+            <Heading className="mb-2">Latest orders</Heading>
             <DataTable columns={columns} data={orders} getRowId={(o) => o.id} pageSize={6} />
-          </div>
+          </Stack>
         </Grid>
-      </div>
+      </Stack>
     </DemoShell>
   );
 }

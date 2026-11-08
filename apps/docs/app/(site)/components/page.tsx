@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { componentGroups } from "@/lib/registry";
 
-export const metadata: Metadata = { title: "Components" };
+export const metadata: Metadata = { title: "Components", alternates: { canonical: "/components" } };
 
 export default function ComponentsIndex() {
   return (

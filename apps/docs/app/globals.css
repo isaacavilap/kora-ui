@@ -7,6 +7,19 @@
 
 :root {
   --kora-font: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  /* Istmo Code green. The button green is a step darker than the logo (#00AA6A) so white text on it passes AA. */
+  --kora-accent: #00875a;
+  --kora-accent-hover: #00704b;
+  --kora-accent-fg: #ffffff;
+  --kora-accent-soft: #e3f5ec;
+}
+
+/* Dark keeps the same green and white text, so every filled button reads the same in both themes. */
+.dark {
+  --kora-accent: #00875a;
+  --kora-accent-hover: #009a66;
+  --kora-accent-fg: #ffffff;
+  --kora-accent-soft: #0e2b1e;
 }
 
 body {
@@ -77,3 +90,7 @@ a:focus-visible {
   font-size: 0.85em;
 }
 
+
+/* kora-ui mark: Istmo Code green, lighter on dark. */
+.kora-mark path { fill: #00AA6A; }
+.dark .kora-mark path { fill: #3BC785; }

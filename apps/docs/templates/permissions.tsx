@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Avatar, Badge, Button, Checkbox, Dialog, DialogContent, DropdownMenuItem, Field, PageHeader, Select, Tabs, TabsContent, TabsList, TabsTrigger, Toaster, toast } from "kora-ui";
+import { Avatar, Badge, Button, Checkbox, Dialog, DialogContent, DropdownMenuItem, Field, Fieldset, Form, Inline, PageHeader, Select, Tabs, TabsContent, TabsList, TabsTrigger, Text, Toaster, toast } from "kora-ui";
 import { DataTable, type DataTableColumn } from "kora-ui/table";
 import { Check, Minus } from "lucide-react";
 import { companies } from "@/lib/demo-data";
@@ -27,8 +27,8 @@ const matrix: DataTableColumn<Capability>[] = [
     header: role,
     accessor: (c) => (c.allowed.includes(role) ? "Yes" : "No"),
     cell: (c) => c.allowed.includes(role)
-      ? <span className="inline-flex items-center gap-1 text-[var(--kora-success)]"><Check aria-hidden className="size-4" /><span className="sr-only">Allowed</span></span>
-      : <span className="inline-flex items-center gap-1 text-[var(--kora-muted)]"><Minus aria-hidden className="size-4" /><span className="sr-only">Not allowed</span></span>,
+      ? <Text inline tone="success" className="inline-flex items-center gap-1"><Check aria-hidden className="size-4" /><Text inline className="sr-only">Allowed</Text></Text>
+      : <Text inline tone="muted" className="inline-flex items-center gap-1"><Minus aria-hidden className="size-4" /><Text inline className="sr-only">Not allowed</Text></Text>,
   })),
 ];
 
@@ -43,13 +43,13 @@ const initialPeople: Person[] = [
 const nameOf = (id: string) => companies.find((c) => c.id === id)!.name;
 
 const peopleColumns: DataTableColumn<Person>[] = [
-  { id: "name", header: "Person", accessor: "name", sortable: true, cell: (p) => <span className="flex items-center gap-2"><Avatar name={p.name} size={24} />{p.name}</span> },
+  { id: "name", header: "Person", accessor: "name", sortable: true, cell: (p) => <Inline wrap={false}><Avatar name={p.name} size={24} />{p.name}</Inline> },
   { id: "role", header: "Role", accessor: "role", sortable: true, filter: { type: "select" } },
   {
     id: "companies",
     header: "Companies",
     accessor: (p) => p.companyIds.map(nameOf).join(", "),
-    cell: (p) => <span className="flex flex-wrap gap-1">{p.companyIds.map((id) => <Badge key={id}>{nameOf(id)}</Badge>)}</span>,
+    cell: (p) => <Inline gap="xs" align="stretch">{p.companyIds.map((id) => <Badge key={id}>{nameOf(id)}</Badge>)}</Inline>,
   },
 ];
 
@@ -84,8 +84,7 @@ export default function Template() {
       <Dialog open={Boolean(editing)} onOpenChange={(open) => !open && setEditing(undefined)}>
         <DialogContent title={`Change access for ${editing?.name}`}>
           {editing && (
-            <form
-              className="grid gap-4"
+            <Form
               onSubmit={(e) => {
                 e.preventDefault();
                 setPeople(people.map((p) => (p.id === editing.id ? editing : p)));
@@ -96,8 +95,7 @@ export default function Template() {
               <Field label="Role">
                 <Select value={editing.role} onValueChange={(role) => setEditing({ ...editing, role: role as Role })} options={roles.map((r) => ({ value: r, label: r }))} />
               </Field>
-              <fieldset className="grid gap-2">
-                <legend className="mb-1 text-sm font-medium">Companies</legend>
+              <Fieldset legend="Companies" className="gap-2 [&>legend]:mb-1">
                 {companies.map((company) => (
                   <Checkbox
                     key={company.id}
@@ -106,9 +104,9 @@ export default function Template() {
                     onCheckedChange={(on) => setEditing({ ...editing, companyIds: on ? [...editing.companyIds, company.id] : editing.companyIds.filter((id) => id !== company.id) })}
                   />
                 ))}
-              </fieldset>
+              </Fieldset>
               <Button type="submit" disabled={editing.companyIds.length === 0} className="justify-self-end max-md:w-full">Change access</Button>
-            </form>
+            </Form>
           )}
         </DialogContent>
       </Dialog>

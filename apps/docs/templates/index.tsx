@@ -14,6 +14,7 @@ export const templates: Record<string, ComponentType> = {
   "record-detail": dynamic(() => import("./record-detail")),
   "record-form": dynamic(() => import("./record-form")),
   "agenda": dynamic(() => import("./agenda")),
+  "team-agenda": dynamic(() => import("./team-agenda")),
   "catalog": dynamic(() => import("./catalog")),
   "report": dynamic(() => import("./report")),
   "audit-log": dynamic(() => import("./audit-log")),

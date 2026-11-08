@@ -2,7 +2,7 @@
   "name": "kora-ui-monorepo",
   "private": true,
   "version": "0.0.0",
-  "description": "Monorepo for the kora-ui component library and its docs site.",
+  "description": "Monorepo for the kora-ui component library, its sketch system, and its docs site.",
   "workspaces": [
     "packages/*",
     "apps/*"
@@ -16,7 +16,9 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm test --workspaces --if-present",
     "version": "changeset version && npm install --package-lock-only",
-    "release": "npm run build:lib && changeset publish"
+    "release": "npm run build:lib && changeset publish",
+    "check:tags": "node scripts/check-tags.mjs apps/docs/templates apps/docs/demos",
+    "dev:sketch": "PORT=3461 npm start -w kora-ui-sketch"
   },
   "engines": {
     "node": ">=20"

@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Avatar, Badge, Button, DropdownMenuItem, PageHeader, StatGroup, Toaster, toast } from "kora-ui";
+import { Avatar, Badge, Button, DropdownMenuItem, Inline, KoraLink, PageHeader, Stack, StatGroup, Text, Toaster, toast } from "kora-ui";
 import { DataTable, type DataTableColumn } from "kora-ui/table";
 import { Plus } from "lucide-react";
 import { assets as seed, assetTone, money, type Asset } from "@/lib/demo-data";
@@ -13,13 +13,13 @@ const columns: DataTableColumn<Asset>[] = [
     accessor: "name",
     sortable: true,
     cell: (a) => (
-      <span className="flex min-w-0 items-center gap-2.5">
+      <Inline wrap={false} className="gap-2.5">
         <Avatar name={a.name} size={32} className="rounded-md" />
-        <span className="min-w-0">
-          <span className="block truncate font-medium">{a.name}</span>
-          <span className="block text-xs text-[var(--kora-muted)]">{a.code}</span>
-        </span>
-      </span>
+        <Stack gap="none">
+          <Text strong className="truncate">{a.name}</Text>
+          <Text size="xs" tone="muted">{a.code}</Text>
+        </Stack>
+      </Inline>
     ),
   },
   { id: "category", header: "Category", accessor: "category", sortable: true, filter: { type: "select" } },
@@ -37,7 +37,7 @@ export default function Template() {
       <PageHeader
         title="Assets"
         description="What you own, where it is, and what state it is in."
-        actions={<Button asChild className="max-md:w-full"><a href="/preview/record-form"><Plus aria-hidden />Add asset</a></Button>}
+        actions={<Button asChild className="max-md:w-full"><KoraLink href="/preview/record-form"><Plus aria-hidden />Add asset</KoraLink></Button>}
       />
       <StatGroup
         className="mb-4"
@@ -60,7 +60,7 @@ export default function Template() {
         selectable
         rowActions={(a) => (
           <>
-            <DropdownMenuItem asChild><a href="/preview/record-detail">Open</a></DropdownMenuItem>
+            <DropdownMenuItem asChild><KoraLink href="/preview/record-detail">Open</KoraLink></DropdownMenuItem>
             <DropdownMenuItem onSelect={() => { remove([a.id]); toast.success(`${a.code} removed.`); }}>Remove</DropdownMenuItem>
           </>
         )}

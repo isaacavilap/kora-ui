@@ -1,11 +1,11 @@
 "use client";
-import { AppShell, Avatar, Button, Sidebar, SidebarGroup, SidebarItem, SidebarSection, Topbar } from "kora-ui";
+import { AppShell, Avatar, Button, Sidebar, SidebarGroup, SidebarItem, SidebarSection, Stack, Text, Topbar } from "kora-ui";
 import { BarChart3, Home, Settings, ShoppingCart } from "lucide-react";
 
 /* Use the Topbar button to collapse the sidebar. Under 1024px it becomes a drawer behind the menu button. */
 export default function Demo() {
   return (
-    <div className="h-96 overflow-auto rounded-md border border-[var(--kora-line)] [&>div]:min-h-full">
+    <Stack gap="none" className="block h-96 overflow-auto rounded-md border border-[var(--kora-line)] [&>div]:min-h-full">
       <AppShell
         sidebar={
           <Sidebar brand={{ name: "Kora Coffee" }}>
@@ -28,14 +28,14 @@ export default function Demo() {
         }
         topbar={
           <Topbar>
-            <span className="mr-auto text-sm font-medium">Orders</span>
+            <Text inline strong className="mr-auto">Orders</Text>
             <Button size="sm" variant="secondary">Export</Button>
             <Avatar name="Marta Ríos" size={28} />
           </Topbar>
         }
       >
-        <p className="text-sm">Page content goes here.</p>
+        <Text>Page content goes here.</Text>
       </AppShell>
-    </div>
+    </Stack>
   );
 }

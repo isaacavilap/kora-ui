@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { CodeBlock } from "@/components/code-block";
 
-export const metadata: Metadata = { title: "Build with AI" };
+export const metadata: Metadata = { title: "Build with AI", alternates: { canonical: "/ai" } };
 
 export default function BuildWithAI() {
   return (

@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState, type ReactNode } from "react";
-import { AppShell, Avatar, BottomNav, Breadcrumbs, CommandPalette, DropdownMenuItem, DropdownMenuSeparator, NotificationsMenu, ScopeSwitcher, Sidebar, SidebarGroup, SidebarItem, SidebarSection, SidebarUser, ThemeToggle, Topbar, type CommandItem, type Notification, type ScopeOption } from "kora-ui";
+import { AppShell, Avatar, BottomNav, Breadcrumbs, CommandPalette, DropdownMenuItem, DropdownMenuSeparator, KoraLink, NotificationsMenu, ScopeSwitcher, Sidebar, SidebarGroup, SidebarItem, SidebarSection, UserMenu, Text, Topbar, type CommandItem, type Notification, type ScopeOption } from "kora-ui";
 import { Activity, BarChart3, Building2, CalendarDays, ClipboardList, CreditCard, History, Home, LayoutDashboard, LogIn, Package, Plus, Settings, ShieldCheck, ShoppingCart, TrendingUp, UserRound, Users } from "lucide-react";
 import { COMPANY_KEY, companies } from "@/lib/demo-data";
 import { Logo } from "./logo";
@@ -29,7 +29,7 @@ const commands: CommandItem[] = [
 
 const logo = (name: string) => <Avatar name={name} size={24} className="shrink-0 rounded-md" />;
 const scopes: ScopeOption[] = [
-  { value: "group", label: "All companies", description: "Totals for the group", logo: <span className="grid size-6 shrink-0 place-items-center"><Building2 aria-hidden className="size-4" /></span> },
+  { value: "group", label: "All companies", description: "Totals for the group", logo: <Text inline className="grid size-6 shrink-0 place-items-center"><Building2 aria-hidden className="size-4" /></Text> },
   ...companies.map((c) => ({ value: c.id, label: c.name, description: c.description, group: "Companies", logo: logo(c.name) })),
 ];
 
@@ -80,13 +80,6 @@ export function DemoShell({ page, title, children }: { page: string; title: stri
               }}
             />
           }
-          footer={
-            <SidebarUser name="Marta Ríos" email="marta@koracoffee.com">
-              <DropdownMenuItem asChild><a href="/preview/account">Account</a></DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild><a href="/preview/login">Sign out</a></DropdownMenuItem>
-            </SidebarUser>
-          }
         >
           <SidebarSection>
             {company ? (
@@ -129,7 +122,11 @@ export function DemoShell({ page, title, children }: { page: string; title: stri
           <Breadcrumbs className="mr-auto" items={[{ label: company?.name ?? "All companies", href: scopeHome }, { label: title }]} />
           <CommandPalette items={commands} />
           <NotificationsMenu items={notifications} onMarkAllRead={() => setNotifications(notifications.map((n) => ({ ...n, unread: false })))} />
-          <ThemeToggle />
+          <UserMenu name="Marta Ríos" email="marta@koracoffee.com" seed="marta">
+            <DropdownMenuItem asChild><KoraLink href="/preview/account">Account</KoraLink></DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild><KoraLink href="/preview/login">Sign out</KoraLink></DropdownMenuItem>
+          </UserMenu>
         </Topbar>
       }
     >

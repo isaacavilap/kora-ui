@@ -2,12 +2,27 @@ import { createContext, useCallback, useContext, useMemo, useRef, useState } fro
 import type { ComponentType, ReactNode } from "react";
 import { labels as dictionaries, type Labels, type Locale } from "./labels";
 
+/** Intl range output uses thin or no-break spaces that differ between Node and browsers (hydration mismatch): make them plain. */
+export const plainSpaces = (s: string) => s.replace(/[\u2009\u202f\u00a0]/g, " ");
+
 export function cn(...parts: Array<string | false | null | undefined>) {
   return parts.filter(Boolean).join(" ");
 }
 
 export type Brand = { name: string; logo?: ReactNode };
-type LinkProps = { href: string; className?: string; children?: ReactNode; onClick?: () => void; "aria-current"?: "page" };
+
+/** The brand logo, fitted to a fixed height so any image or svg (even with width/height attributes) stays in its slot. */
+export function BrandLogo({ logo, size = "md" }: { logo?: ReactNode; size?: "sm" | "md" }) {
+  if (!logo) return null;
+  return (
+    <span aria-hidden className={cn(
+      // object-contain keeps the logo's own proportions when the width cap is tighter than its natural width (wide logos in the rail).
+      "kr:flex kr:shrink-0 kr:items-center kr:justify-center kr:overflow-hidden kr:[&_img]:h-full kr:[&_img]:w-auto kr:[&_img]:max-w-full kr:[&_img]:object-contain kr:[&>svg]:h-full kr:[&>svg]:w-auto kr:[&>svg]:max-w-full",
+      size === "sm" ? "kr:h-6 kr:max-w-8" : "kr:h-7 kr:max-w-32",
+    )}>{logo}</span>
+  );
+}
+type LinkProps = { href: string; className?: string; children?: ReactNode; onClick?: () => void; "aria-current"?: "page"; target?: string; rel?: string; download?: boolean | string };
 export type LinkComponent = ComponentType<LinkProps>;
 
 type KoraConfig = { locale: Locale; linkComponent: LinkComponent | "a"; brand?: Brand };

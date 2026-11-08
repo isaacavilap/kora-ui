@@ -1,5 +1,5 @@
 "use client";
-import { Alert, Badge, Card, CardContent, CardHeader, ChartCard, Gauge, Grid, Heatmap, KpiCard, PageHeader, RankedList, Timeline } from "kora-ui";
+import { Alert, Badge, Card, CardContent, CardHeader, ChartCard, Gauge, Grid, Heading, Heatmap, KpiCard, PageHeader, RankedList, Stack, Timeline } from "kora-ui";
 import { AreaChart } from "kora-ui/charts";
 import { DataTable, type DataTableColumn } from "kora-ui/table";
 import { DemoShell } from "./shell";
@@ -40,7 +40,7 @@ export default function Template() {
     <DemoShell page="dashboard-operations" title="Operations">
       <PageHeader title="Operations" description="Service health, response times, and open incidents." />
       <Alert tone="danger" title="Email delivery is down" className="mb-4">Messages are queued and send once the provider recovers.</Alert>
-      <div className="grid gap-[var(--kora-gap)]">
+      <Stack>
         <Grid min="10.5rem">
           <KpiCard label="Uptime, 30 days" value="99.82%" delta={-0.1} deltaLabel="vs last month" trend={[99.97, 99.95, 99.96, 99.9, 99.88, 99.82]} />
           <KpiCard label="Slowest responses" value="610 ms" delta={22} invertDelta deltaLabel="vs yesterday" trend={[280, 240, 340, 420, 610]} />
@@ -78,11 +78,11 @@ export default function Template() {
           </CardContent>
         </Card>
         <Grid cols="2fr 1fr">
-          <div className="min-w-0">
-            <h2 className="mb-2 text-sm font-semibold">Services</h2>
+          <Stack gap="none">
+            <Heading className="mb-2">Services</Heading>
             <DataTable columns={columns} data={services} getRowId={(s) => s.id} exportFilename="services" />
-          </div>
-          <div className="grid min-w-0 content-start gap-[var(--kora-gap)]">
+          </Stack>
+          <Stack>
             <Card>
               <CardHeader title="Incidents" />
               <CardContent>
@@ -107,9 +107,9 @@ export default function Template() {
                 />
               </CardContent>
             </Card>
-          </div>
+          </Stack>
         </Grid>
-      </div>
+      </Stack>
     </DemoShell>
   );
 }

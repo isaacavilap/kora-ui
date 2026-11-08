@@ -1,15 +1,19 @@
 import { createContext, useCallback, useContext, useEffect, useId, useMemo, useState } from "react";
-import type { CSSProperties, HTMLAttributes, ReactNode } from "react";
+import type { CSSProperties, FieldsetHTMLAttributes, HTMLAttributes, LiHTMLAttributes, ReactNode } from "react";
 import { Dialog as D, Popover } from "radix-ui";
-import { ChevronLeft, ChevronRight, Menu, MoreHorizontal, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { ChevronLeft, ChevronRight, Menu, MoreHorizontal, PanelLeftOpen } from "lucide-react";
 import { Button, focusRing, popoverClass } from "./button";
 import { Badge } from "./display";
 import { Tooltip } from "./overlay";
-import { cn, KoraLink, useKora, useLabels } from "./provider";
+import { BrandLogo, cn, KoraLink, useKora, useLabels } from "./provider";
 
 const COLLAPSED_KEY = "kora-sidebar-collapsed";
+/** Cookie "kora-sidebar-collapsed" ("1" collapsed). Read it on the server and pass `defaultCollapsed`, so the first paint is already right.
+ * Not exported: the package is "use client", so a server component would get a client reference, not the string. */
+const SIDEBAR_COOKIE = COLLAPSED_KEY;
+const saveCookie = (collapsed: boolean) => { document.cookie = `${SIDEBAR_COOKIE}=${collapsed ? 1 : 0}; path=/; max-age=31536000; samesite=lax`; };
 
-type Shell = { openDrawer?: () => void; closeDrawer?: () => void; toggleCollapsed?: () => void; collapsed: boolean; hasSidebar: boolean };
+type Shell = { openDrawer?: () => void; closeDrawer?: () => void; toggleCollapsed?: () => void; collapsed: boolean; hasSidebar: boolean; sidebarHidden?: boolean };
 const ShellContext = createContext<Shell>({ collapsed: false, hasSidebar: false });
 /** True only inside the desktop icon rail. The phone drawer always shows full labels. */
 const RailContext = createContext(false);
@@ -34,7 +38,7 @@ export function AppShell({ sidebar, topbar, bottomNav, collapseMode = "rail", co
   topbar?: ReactNode;
   /** `rail` keeps a column of icons when collapsed. `hidden` removes the sidebar. */
   collapseMode?: "rail" | "hidden";
-  /** Controlled state. Without it, the choice is saved in localStorage. */
+  /** Controlled state. Without it, the choice is saved in localStorage and in the `kora-sidebar-collapsed` cookie. */
   collapsed?: boolean;
   defaultCollapsed?: boolean;
   onCollapsedChange?: (collapsed: boolean) => void;
@@ -47,12 +51,13 @@ export function AppShell({ sidebar, topbar, bottomNav, collapseMode = "rail", co
   const isControlled = controlled !== undefined;
   const collapsed = controlled ?? saved;
 
-  // ponytail: read after mount so server and client markup match. A saved collapse appears one frame late.
+  // The server can't see localStorage: an app that passes `defaultCollapsed` from SIDEBAR_COOKIE paints right at once.
+  // Without it, a saved collapse appears after mount. A choice saved before the cookie existed is copied into it here.
   useEffect(() => {
     if (isControlled) return;
     try {
       const value = localStorage.getItem(COLLAPSED_KEY);
-      if (value !== null) setSaved(value === "1");
+      if (value !== null) { setSaved(value === "1"); saveCookie(value === "1"); }
     } catch {} // Storage can be blocked. The sidebar still works for this page view.
   }, [isControlled]);
 
@@ -64,27 +69,46 @@ export function AppShell({ sidebar, topbar, bottomNav, collapseMode = "rail", co
     try {
       localStorage.setItem(COLLAPSED_KEY, next ? "1" : "0");
     } catch {}
+    saveCookie(next);
   };
 
   const rail = collapsed && collapseMode === "rail";
   return (
-    <ShellContext.Provider value={{ openDrawer: () => setDrawer(true), closeDrawer: () => setDrawer(false), toggleCollapsed, collapsed, hasSidebar: Boolean(sidebar) }}>
-      <div className={cn("kr:flex kr:min-h-dvh kr:bg-bg kr:text-fg", Boolean(bottomNav) && "kr:[--kora-bottom-nav:calc(3.5rem+env(safe-area-inset-bottom))] kr:lg:[--kora-bottom-nav:0px]", className)}>
+    <ShellContext.Provider value={{ openDrawer: () => setDrawer(true), closeDrawer: () => setDrawer(false), toggleCollapsed, collapsed, hasSidebar: Boolean(sidebar), sidebarHidden: collapsed && collapseMode === "hidden" }}>
+      <div data-kora-shell style={{ "--kora-sidebar-w": !sidebar || (collapsed && collapseMode === "hidden") ? "0px" : rail ? "3.5rem" : "15rem" } as CSSProperties} className={cn("kr:flex kr:min-h-dvh kr:bg-bg kr:text-fg", Boolean(bottomNav) && "kr:[--kora-bottom-nav:calc(3.5rem+env(safe-area-inset-bottom))] kr:lg:[--kora-bottom-nav:0px]", className)}>
         {sidebar && (
           <>
-            <aside
-              className={cn(
-                "kr:sticky kr:top-0 kr:hidden kr:h-dvh kr:shrink-0 kr:overflow-hidden kr:border-r kr:border-line kr:bg-surface kr:transition-[width] kr:duration-150",
-                rail ? "kr:w-14" : "kr:w-60",
-                !(collapsed && collapseMode === "hidden") && "kr:lg:block",
-              )}
-            >
-              <RailContext.Provider value={rail}>{sidebar}</RailContext.Provider>
-            </aside>
+            {/* The button sits outside the aside, because the aside clips what passes its edge. */}
+            <div className={cn("kr:sticky kr:top-0 kr:z-50 kr:hidden kr:h-dvh kr:shrink-0", !(collapsed && collapseMode === "hidden") && "kr:lg:block")}>
+              <aside
+                data-kora-menu
+                className={cn(
+                  "kr:h-full kr:overflow-hidden kr:border-r kr:border-line kr:bg-surface kr:transition-[width] kr:duration-150",
+                  rail ? "kr:w-14" : "kr:w-60",
+                )}
+              >
+                <RailContext.Provider value={rail}>{sidebar}</RailContext.Provider>
+              </aside>
+              <button
+                type="button"
+                aria-label={collapsed ? t.expandSidebar : t.collapseSidebar}
+                aria-expanded={!collapsed}
+                onClick={toggleCollapsed}
+                className={cn(
+                  // In the rail the logo takes the narrow column, so the button drops just below it; Sidebar leaves room for it.
+                  rail ? "kr:top-[2.875rem]" : "kr:top-4",
+                  "kr:absolute kr:-right-3 kr:flex kr:size-6 kr:cursor-pointer kr:items-center kr:justify-center kr:rounded-full kr:border kr:border-line kr:bg-surface kr:text-muted kr:shadow-sm kr:transition-colors kr:hover:border-line-strong kr:hover:text-fg kr:before:absolute kr:before:-inset-2.5",
+                  focusRing,
+                )}
+              >
+                {collapsed ? <ChevronRight aria-hidden className="kr:size-3.5" /> : <ChevronLeft aria-hidden className="kr:size-3.5" />}
+              </button>
+            </div>
             <D.Root open={drawer} onOpenChange={setDrawer}>
               <D.Portal>
                 <D.Overlay className="kr:fixed kr:inset-0 kr:z-50 kr:bg-black/50 kr:animate-[kr-fade-in_150ms_ease-out] kr:lg:hidden" />
                 <D.Content
+                  data-kora-menu
                   aria-describedby={undefined}
                   className="kr:fixed kr:inset-y-0 kr:left-0 kr:z-50 kr:w-[min(17rem,85vw)] kr:bg-surface kr:text-fg kr:shadow-overlay kr:outline-none kr:animate-[kr-slide-left_180ms_ease-out] kr:lg:hidden"
                 >
@@ -97,7 +121,7 @@ export function AppShell({ sidebar, topbar, bottomNav, collapseMode = "rail", co
         )}
         <div className="kr:flex kr:min-w-0 kr:flex-1 kr:flex-col">
           {topbar}
-          <main className={cn("kr:min-w-0 kr:flex-1 kr:p-4 kr:lg:p-6", Boolean(bottomNav) && "kr:pb-[calc(1rem+var(--kora-bottom-nav))] kr:lg:pb-6")}>{children}</main>
+          <main className={cn("kr:min-w-0 kr:flex-1 kr:p-4 kr:lg:p-6 kr:space-y-[var(--kora-gap)]", Boolean(bottomNav) && "kr:pb-[calc(1rem+var(--kora-bottom-nav))] kr:lg:pb-6")}>{children}</main>
         </div>
         {bottomNav}
       </div>
@@ -123,12 +147,14 @@ export function Sidebar({ brand, scope, footer, children, className }: {
     <div className={cn("kr:flex kr:h-full kr:flex-col", className)}>
       {b && (
         <div className={cn("kr:flex kr:h-14 kr:shrink-0 kr:items-center kr:gap-2 kr:text-sm kr:font-semibold", rail ? "kr:justify-center" : "kr:px-4")}>
-          {b.logo ?? (rail && <span aria-hidden>{initial(b.name)}</span>)}
+          {b.logo ? <BrandLogo logo={b.logo} size={rail ? "sm" : "md"} /> : rail && <span aria-hidden>{initial(b.name)}</span>}
           <span className={rail ? "kr:sr-only" : "kr:truncate"}>{b.name}</span>
         </div>
       )}
+      {/* Room for the expand button, which sits just under the brand in the rail. */}
+      {rail && <div aria-hidden className="kr:h-5 kr:shrink-0" />}
       {scope && <div className="kr:shrink-0 kr:px-2 kr:pb-1">{scope}</div>}
-      <nav className="kr:min-h-0 kr:flex-1 kr:space-y-5 kr:overflow-x-hidden kr:overflow-y-auto kr:px-2 kr:py-2">{children}</nav>
+      <nav className="kr:min-h-0 kr:flex-1 kr:space-y-3 kr:overflow-x-hidden kr:overflow-y-auto kr:px-2 kr:py-2">{children}</nav>
       {footer && <div className="kr:shrink-0 kr:overflow-hidden kr:border-t kr:border-line kr:p-2">{footer}</div>}
     </div>
   );
@@ -137,9 +163,10 @@ export function Sidebar({ brand, scope, footer, children, className }: {
 export function SidebarSection({ label, children }: { label?: ReactNode; children: ReactNode }) {
   const rail = useContext(RailContext);
   return (
-    <div>
+    // A faint line between groups; the first group has none.
+    <div className="kr:not-first:border-t kr:not-first:border-line/50 kr:not-first:pt-3">
       {label && !rail && <p className="kr:px-2 kr:pb-1 kr:text-xs kr:text-muted">{label}</p>}
-      <ul className="kr:space-y-0.5">{children}</ul>
+      <ul className={rail ? "kr:space-y-1.5" : "kr:space-y-0.5"}>{children}</ul>
     </div>
   );
 }
@@ -147,18 +174,21 @@ export function SidebarSection({ label, children }: { label?: ReactNode; childre
 const rowClass = (rail: boolean) =>
   cn(
     "kr:relative kr:flex kr:h-11 kr:items-center kr:gap-2.5 kr:rounded-md kr:text-sm kr:transition-colors kr:lg:h-9 kr:[&_svg]:size-4 kr:[&_svg]:shrink-0",
-    rail ? "kr:justify-center" : "kr:px-2",
+    // In the rail each icon gets a faint outline, so the buttons read as separate targets.
+    rail ? "kr:justify-center kr:border kr:border-line/50 kr:hover:border-line" : "kr:px-2",
     focusRing,
     "kr:focus-visible:-outline-offset-2",
   );
-const activeRow = "kr:bg-accent-soft kr:font-medium kr:text-accent";
+const activeRow = "kr:border-accent/30 kr:bg-accent-soft kr:font-medium kr:text-accent";
 const idleRow = "kr:text-muted kr:hover:bg-surface-2 kr:hover:text-fg";
 
-export function SidebarItem({ href, icon, active, badge, onClick, children }: {
+export function SidebarItem({ href, icon, active, badge, nested, onClick, children }: {
   href: string;
   icon?: ReactNode;
   active?: boolean;
   badge?: ReactNode;
+  /** Indents the item under the one above it, with a guide line. Ignored in the icon rail. */
+  nested?: boolean;
   onClick?: () => void;
   children: ReactNode;
 }) {
@@ -195,7 +225,7 @@ export function SidebarItem({ href, icon, active, badge, onClick, children }: {
     </KoraLink>
   );
   return (
-    <li>
+    <li className={nested && !rail ? "kr:ml-4 kr:border-l kr:border-line kr:pl-1.5" : undefined}>
       {rail ? (
         <Tooltip content={children} side="right">
           <span className="kr:block">{link}</span>
@@ -264,7 +294,7 @@ export function SidebarGroup({ label, icon, defaultOpen = false, children }: {
               <ShellContext.Provider value={flyoutShell}>
                 <GroupContext.Provider value={noReport}>
                   <RailContext.Provider value={false}>
-                    <ul className="kr:space-y-0.5">{children}</ul>
+                    <ul className={rail ? "kr:space-y-1.5" : "kr:space-y-0.5"}>{children}</ul>
                   </RailContext.Provider>
                 </GroupContext.Provider>
               </ShellContext.Provider>
@@ -295,7 +325,7 @@ export function SidebarGroup({ label, icon, defaultOpen = false, children }: {
 }
 
 export function Topbar({ children, className }: { children?: ReactNode; className?: string }) {
-  const { openDrawer, toggleCollapsed, collapsed, hasSidebar } = useContext(ShellContext);
+  const { openDrawer, toggleCollapsed, hasSidebar, sidebarHidden } = useContext(ShellContext);
   const t = useLabels();
   return (
     <header className={cn("kr:sticky kr:top-0 kr:z-40 kr:flex kr:h-14 kr:shrink-0 kr:items-center kr:gap-2 kr:border-b kr:border-line kr:bg-surface kr:px-2 kr:lg:px-6", className)}>
@@ -304,12 +334,14 @@ export function Topbar({ children, className }: { children?: ReactNode; classNam
           <Button variant="ghost" size="icon" aria-label={t.menu} onClick={openDrawer} className="kr:lg:hidden">
             <Menu aria-hidden />
           </Button>
-          {/* The wrapper hides the button, because `hidden` loses to the inline-flex of Button in the compiled CSS. */}
-          <span className="kr:hidden kr:lg:contents">
-            <Button variant="ghost" size="icon" aria-label={collapsed ? t.expandSidebar : t.collapseSidebar} aria-expanded={!collapsed} onClick={toggleCollapsed}>
-              {collapsed ? <PanelLeftOpen aria-hidden /> : <PanelLeftClose aria-hidden />}
-            </Button>
-          </span>
+          {/* A hidden sidebar has no edge to hold its button, so the way back is here. */}
+          {sidebarHidden && (
+            <span className="kr:hidden kr:lg:contents">
+              <Button variant="ghost" size="icon" aria-label={t.expandSidebar} aria-expanded={false} onClick={toggleCollapsed}>
+                <PanelLeftOpen aria-hidden />
+              </Button>
+            </span>
+          )}
         </>
       )}
       <div className="kr:flex kr:min-w-0 kr:flex-1 kr:items-center kr:gap-2 kr:pr-2 kr:lg:pr-0">{children}</div>
@@ -352,6 +384,72 @@ export function PageHeader({ title, description, actions, back, status, classNam
  * `min` fits as many columns as there is room for, each at least that wide.
  * `cols` sets explicit tracks from 1024px, such as "2fr 1fr", and stacks below.
  */
+/** A plain container, for what Stack, Inline, and Grid do not cover. `as` gives it the right meaning, such as "section" or "header". */
+export function Box({ as: Tag = "div", ...props }: HTMLAttributes<HTMLElement> & { as?: "div" | "section" | "header" | "main" | "footer" | "article" | "aside" | "nav" }) {
+  return <Tag {...props} />;
+}
+
+/** A list with no bullets. Use it with ListItem. */
+export function List({ ordered, gap = "none", className, ...props }: HTMLAttributes<HTMLElement> & { ordered?: boolean; gap?: keyof typeof gaps }) {
+  const Tag = ordered ? "ol" : "ul";
+  return <Tag className={cn("kr:grid kr:min-w-0", gaps[gap], className)} {...props} />;
+}
+
+export function ListItem(props: LiHTMLAttributes<HTMLLIElement>) {
+  return <li {...props} />;
+}
+
+/** A group of related fields, with a title. */
+export function Fieldset({ legend, className, children, ...props }: FieldsetHTMLAttributes<HTMLFieldSetElement> & { legend: ReactNode }) {
+  return (
+    <fieldset className={cn("kr:grid kr:min-w-0 kr:gap-3", className)} {...props}>
+      <legend className="kr:mb-2 kr:text-sm kr:font-medium kr:text-fg">{legend}</legend>
+      {children}
+    </fieldset>
+  );
+}
+
+const gaps = { none: "kr:gap-0", xs: "kr:gap-1", sm: "kr:gap-2", md: "kr:gap-4", lg: "kr:gap-[var(--kora-gap)]" };
+const aligns = { start: "kr:items-start", center: "kr:items-center", end: "kr:items-end", baseline: "kr:items-baseline", stretch: "kr:items-stretch" };
+const justifies = { start: "kr:justify-start", center: "kr:justify-center", end: "kr:justify-end", between: "kr:justify-between" };
+type LayoutProps = HTMLAttributes<HTMLDivElement> & { gap?: keyof typeof gaps };
+
+/** Puts children one under another. The default gap is the gap between page sections. */
+export function Stack({ gap = "lg", className, ...props }: LayoutProps) {
+  return <div className={cn("kr:grid kr:min-w-0 kr:grid-cols-[minmax(0,1fr)] kr:content-start", gaps[gap], className)} {...props} />;
+}
+
+/** Puts children in a row. They wrap when the row is too narrow. */
+export function Inline({ gap = "sm", align = "center", justify = "start", wrap = true, className, ...props }: LayoutProps & {
+  align?: keyof typeof aligns;
+  justify?: keyof typeof justifies;
+  wrap?: boolean;
+}) {
+  return <div className={cn("kr:flex kr:min-w-0", wrap && "kr:flex-wrap", gaps[gap], aligns[align], justifies[justify], className)} {...props} />;
+}
+
+const headingSizes = { sm: "kr:text-sm", md: "kr:text-base", lg: "kr:text-xl", xl: "kr:text-3xl" };
+
+/** A title inside a page. Use PageHeader for the title of the page. */
+export function Heading({ level = 2, size = "sm", className, ...props }: HTMLAttributes<HTMLHeadingElement> & { level?: 1 | 2 | 3 | 4; size?: keyof typeof headingSizes }) {
+  const Tag = `h${level}` as const;
+  return <Tag className={cn("kr:font-semibold kr:text-fg", headingSizes[size], className)} {...props} />;
+}
+
+const textSizes = { xs: "kr:text-xs", sm: "kr:text-[0.8125rem]", md: "kr:text-sm", lg: "kr:text-base" };
+const textTones = { default: "kr:text-fg", muted: "kr:text-muted", accent: "kr:text-accent", success: "kr:text-success", warning: "kr:text-warning", danger: "kr:text-danger" };
+
+/** Text with a size and a color from the theme. `inline` keeps it inside a line. */
+export function Text({ size = "md", tone = "default", strong, inline, className, ...props }: HTMLAttributes<HTMLElement> & {
+  size?: keyof typeof textSizes;
+  tone?: keyof typeof textTones;
+  strong?: boolean;
+  inline?: boolean;
+}) {
+  const Tag = inline ? "span" : "p";
+  return <Tag className={cn(textSizes[size], textTones[tone], strong && "kr:font-medium", className)} {...props} />;
+}
+
 export function Grid({ min = "15rem", cols, className, style, ...props }: HTMLAttributes<HTMLDivElement> & { min?: string; cols?: string }) {
   return (
     <div
@@ -380,12 +478,17 @@ export function SaveBar({ dirty, saving, onDiscard, message, saveLabel, classNam
 }) {
   const t = useLabels();
   if (!dirty) return null;
+  // Fixed to the bottom of the screen (above BottomNav), spanning the content column: AppShell sets --kora-sidebar-w.
+  // The spacer keeps the end of the form scrollable above the bar. It stays a child of the form, so Save submits it.
   return (
-    <div role="status" className={cn("kr:sticky kr:bottom-[var(--kora-bottom-nav,0px)] kr:z-10 kr:-mx-4 kr:-mb-4 kr:mt-4 kr:flex kr:flex-wrap kr:items-center kr:gap-x-3 kr:gap-y-2 kr:border-t kr:border-line kr:bg-surface kr:px-4 kr:py-3 kr:lg:-mx-6 kr:lg:-mb-6 kr:lg:px-6", className)}>
-      <p className="kr:w-full kr:text-sm kr:text-muted kr:md:mr-auto kr:md:w-auto">{message ?? t.unsavedChanges}</p>
-      <Button type="button" variant="secondary" disabled={saving} onClick={onDiscard} className="kr:flex-1 kr:md:flex-none">{t.discard}</Button>
-      <Button type="submit" loading={saving} className="kr:flex-1 kr:md:flex-none">{saveLabel ?? t.saveChanges}</Button>
-    </div>
+    <>
+      <div aria-hidden className="kr:h-28 kr:md:h-16" />
+      <div role="status" className={cn("kr:fixed kr:inset-x-0 kr:bottom-[var(--kora-bottom-nav,0px)] kr:z-40 kr:flex kr:flex-wrap kr:items-center kr:gap-x-3 kr:gap-y-2 kr:border-t kr:border-line kr:bg-surface kr:px-4 kr:py-3 kr:shadow-[0_-4px_16px_rgb(0_0_0/0.06)] kr:lg:left-[var(--kora-sidebar-w,0px)] kr:lg:px-6", className)}>
+        <p className="kr:w-full kr:text-sm kr:text-muted kr:md:mr-auto kr:md:w-auto">{message ?? t.unsavedChanges}</p>
+        <Button type="button" variant="secondary" disabled={saving} onClick={onDiscard} className="kr:flex-1 kr:md:flex-none">{t.discard}</Button>
+        <Button type="submit" loading={saving} className="kr:flex-1 kr:md:flex-none">{saveLabel ?? t.saveChanges}</Button>
+      </div>
+    </>
   );
 }
 
@@ -400,13 +503,14 @@ export function BottomNav({ items, className }: { items: BottomNavItem[]; classN
   const { openDrawer, hasSidebar } = useContext(ShellContext);
   // A page outside the bottom menu lives under More, so one button always marks where you are.
   const inMore = hasSidebar && !items.some((item) => item.active);
-  const state = (active?: boolean) => (active ? "kr:font-semibold kr:text-accent" : "kr:text-muted");
+  // Only the icon takes the accent color. The name just gets darker.
+  const state = (active?: boolean) => (active ? "kr:font-medium kr:text-fg" : "kr:text-muted");
   const icon = (active: boolean | undefined, node: ReactNode) => (
-    <span className={cn("kr:flex kr:h-6 kr:w-12 kr:items-center kr:justify-center kr:rounded-full", active && "kr:bg-accent-soft")}>{node}</span>
+    <span className={cn("kr:flex kr:h-6 kr:items-center kr:justify-center", active && "kr:text-accent kr:[&_svg]:stroke-[2.5]")}>{node}</span>
   );
   const cell = cn("kr:relative kr:flex kr:min-h-14 kr:min-w-0 kr:cursor-pointer kr:flex-col kr:items-center kr:justify-center kr:gap-0.5 kr:px-1 kr:text-[0.6875rem] kr:leading-4 kr:outline-none kr:active:bg-surface-2 kr:focus-visible:ring-2 kr:focus-visible:ring-inset kr:focus-visible:ring-accent kr:[&_svg]:size-5 kr:[&_svg]:shrink-0");
   return (
-    <nav aria-label={t.primaryNav} className={cn("kr:fixed kr:inset-x-0 kr:bottom-0 kr:z-40 kr:border-t kr:border-line kr:bg-surface kr:pb-[env(safe-area-inset-bottom)] kr:lg:hidden", className)}>
+    <nav data-kora-bottom-nav aria-label={t.primaryNav} className={cn("kr:fixed kr:inset-x-0 kr:bottom-0 kr:z-40 kr:border-t kr:border-line kr:bg-surface kr:pb-[env(safe-area-inset-bottom)] kr:lg:hidden", className)}>
       <ul className="kr:grid kr:auto-cols-fr kr:grid-flow-col">
         {items.map((item) => (
           <li key={item.href} className="kr:min-w-0">

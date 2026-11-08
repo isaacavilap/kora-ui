@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Badge, Button, Card, CardContent, CardHeader, ConfirmDialog, DescriptionList, DocumentList, Field, FileDropzone, Grid, PageHeader, Stepper, Tabs, TabsContent, TabsList, TabsTrigger, Textarea, Timeline, Toaster, toast, type DocumentItem, type TimelineEvent } from "kora-ui";
+import { Badge, Button, Card, CardContent, CardHeader, ConfirmDialog, DescriptionList, DocumentList, Field, FileDropzone, Form, Grid, KoraLink, PageHeader, Stack, Stepper, Tabs, TabsContent, TabsList, TabsTrigger, Textarea, Timeline, Toaster, toast, type DocumentItem, type TimelineEvent } from "kora-ui";
 import { DataTable, type DataTableColumn } from "kora-ui/table";
 import { money, requests, stages, wait } from "@/lib/demo-data";
 import { DemoShell } from "./shell";
@@ -47,7 +47,7 @@ export default function Template() {
         status={<Badge tone={step === 3 ? "success" : "accent"}>{stages[step]!.label}</Badge>}
         actions={
           <>
-            <Button asChild variant="secondary" className="max-md:w-full"><a href="/preview/record-form">Edit</a></Button>
+            <Button asChild variant="secondary" className="max-md:w-full"><KoraLink href="/preview/record-form">Edit</KoraLink></Button>
             {action && <Button onClick={() => setConfirming(true)} className="max-md:w-full">{action}</Button>}
           </>
         }
@@ -69,12 +69,12 @@ export default function Template() {
             <Card>
               <CardHeader title="Notes" />
               <CardContent>
-                <form className="grid gap-3" onSubmit={(e) => { e.preventDefault(); toast.success("Note saved."); }}>
+                <Form className="gap-3" onSubmit={(e) => { e.preventDefault(); toast.success("Note saved."); }}>
                   <Field label="Only your team sees this">
                     <Textarea defaultValue="The fridge holds temperature until noon. Plan the visit before the morning delivery." />
                   </Field>
                   <Button type="submit" variant="secondary" className="justify-self-end max-md:w-full">Save note</Button>
-                </form>
+                </Form>
               </CardContent>
             </Card>
           </TabsContent>
@@ -99,7 +99,7 @@ export default function Template() {
             <Card><CardContent className="pt-4"><Timeline events={history} /></CardContent></Card>
           </TabsContent>
         </Tabs>
-        <div className="grid min-w-0 content-start gap-[var(--kora-gap)]">
+        <Stack>
           <Card>
             <CardHeader title="Details" />
             <CardContent>
@@ -113,7 +113,7 @@ export default function Template() {
               />
             </CardContent>
           </Card>
-        </div>
+        </Stack>
       </Grid>
 
       <ConfirmDialog

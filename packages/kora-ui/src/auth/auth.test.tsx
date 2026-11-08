@@ -10,6 +10,15 @@ const fillLogin = async (email: string, password: string) => {
   await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
 };
 
+describe("AuthLayout brand", () => {
+  it("shows the provider brand, and hides it with brand={null}", () => {
+    const { rerender } = render(<KoraProvider brand={{ name: "Acme" }}><LoginScreen onSubmit={vi.fn()} /></KoraProvider>);
+    expect(screen.getByText("Acme")).toBeInTheDocument();
+    rerender(<KoraProvider brand={{ name: "Acme" }}><LoginScreen brand={null} onSubmit={vi.fn()} /></KoraProvider>);
+    expect(screen.queryByText("Acme")).not.toBeInTheDocument();
+  });
+});
+
 describe("LoginScreen", () => {
   it("validates format and does not call onSubmit", async () => {
     const onSubmit = vi.fn();

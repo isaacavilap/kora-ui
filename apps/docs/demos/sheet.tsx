@@ -1,5 +1,5 @@
 "use client";
-import { Button, Field, Input, Sheet, SheetClose, SheetContent, SheetTrigger } from "kora-ui";
+import { Button, Field, Input, Sheet, SheetClose, SheetContent, SheetTrigger, Stack } from "kora-ui";
 
 export default function Demo() {
   return (
@@ -12,10 +12,10 @@ export default function Demo() {
         description="Changes apply to future orders."
         footer={<SheetClose asChild><Button>Save changes</Button></SheetClose>}
       >
-        <div className="grid gap-4">
+        <Stack gap="md">
           <Field label="Name"><Input defaultValue="Marta Ríos" /></Field>
           <Field label="Email"><Input type="email" defaultValue="marta@example.com" /></Field>
-        </div>
+        </Stack>
       </SheetContent>
     </Sheet>
   );

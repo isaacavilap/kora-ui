@@ -1,5 +1,5 @@
 "use client";
-import { AlertList, Avatar, Badge, Button, Card, CardContent, CardFooter, CardHeader, ChartCard, Delta, DescriptionList, Grid, KpiCard, PageHeader, Timeline } from "kora-ui";
+import { AlertList, Avatar, Badge, Button, Card, CardContent, CardFooter, CardHeader, ChartCard, Delta, DescriptionList, Grid, Heading, Inline, KpiCard, PageHeader, Stack, Text, Timeline } from "kora-ui";
 import { BarChart } from "kora-ui/charts";
 import { DataTable, type DataTableColumn } from "kora-ui/table";
 import { COMPANY_KEY, companies, money, requests, revenueByCompany, stages, stageTone, type WorkRequest } from "@/lib/demo-data";
@@ -26,7 +26,7 @@ export default function Template() {
   return (
     <DemoShell page="group-overview" title="Overview">
       <PageHeader title="All companies" description="Totals for the group. Open a company to work in it." />
-      <div className="grid gap-[var(--kora-gap)]">
+      <Stack>
         <Grid min="10.5rem">
           <KpiCard label="Group revenue" value={money(sum((c) => c.revenue))} delta={5.1} deltaLabel="vs September" />
           <KpiCard label="Open requests" value={sum((c) => c.open)} delta={-4} invertDelta deltaLabel="vs September" />
@@ -37,13 +37,13 @@ export default function Template() {
           {companies.map((company) => (
             <Card key={company.id} className="flex flex-col">
               <CardHeader
-                title={<span className="flex items-center gap-2"><Avatar name={company.name} size={24} className="rounded-md" />{company.name}</span>}
+                title={<Text inline className="flex items-center gap-2"><Avatar name={company.name} size={24} className="rounded-md" />{company.name}</Text>}
                 description={company.description}
               />
               <CardContent className="flex-1">
                 <DescriptionList
                   items={[
-                    { label: "Revenue", value: <span className="flex items-center gap-2">{money(company.revenue)} <Delta value={company.delta} /></span> },
+                    { label: "Revenue", value: <Inline wrap={false}>{money(company.revenue)} <Delta value={company.delta} /></Inline> },
                     { label: "Open requests", value: company.open },
                     { label: "Past due", value: company.pastDue === 0 ? "None" : <Badge tone="danger">{company.pastDue}</Badge> },
                   ]}
@@ -66,7 +66,7 @@ export default function Template() {
               series={companies.map((c) => ({ key: c.id, label: c.name }))}
             />
           </ChartCard>
-          <div className="grid min-w-0 content-start gap-[var(--kora-gap)]">
+          <Stack>
             <Card>
               <CardHeader title="Needs attention" />
               <CardContent>
@@ -90,13 +90,13 @@ export default function Template() {
                 />
               </CardContent>
             </Card>
-          </div>
+          </Stack>
         </Grid>
-        <div className="min-w-0">
-          <h2 className="mb-2 text-sm font-semibold">Open requests in all companies</h2>
+        <Stack gap="none">
+          <Heading className="mb-2">Open requests in all companies</Heading>
           <DataTable columns={columns} data={rows} getRowId={(r) => r.id} searchable searchPlaceholder="Search requests" exportFilename="group-requests" pageSize={6} />
-        </div>
-      </div>
+        </Stack>
+      </Stack>
     </DemoShell>
   );
 }

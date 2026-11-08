@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Card, CardContent, CardHeader, ChartCard, Funnel, Gauge, Grid, Heatmap, KpiCard, PageHeader, SegmentBar, SegmentedControl, Timeline } from "kora-ui";
+import { Card, CardContent, CardHeader, ChartCard, Funnel, Gauge, Grid, Heatmap, KpiCard, PageHeader, SegmentBar, SegmentedControl, Stack, Timeline } from "kora-ui";
 import { BarChart, LineChart } from "kora-ui/charts";
 import { money } from "@/lib/demo-data";
 import { DemoShell } from "./shell";
@@ -40,7 +40,7 @@ export default function Template() {
   return (
     <DemoShell page="dashboard-saas" title="Subscriptions">
       <PageHeader title="Subscriptions" description="Recurring revenue, signups, and how long customers stay." />
-      <div className="grid gap-[var(--kora-gap)]">
+      <Stack>
         <Grid min="10.5rem">
           <KpiCard label="Monthly revenue" value="$56,900" delta={8.8} deltaLabel="vs last month" trend={mrr.map((m) => m.mrr)} />
           <KpiCard label="Active customers" value="1,284" delta={3.2} deltaLabel="vs last month" trend={[1090, 1120, 1150, 1190, 1244, 1284]} />
@@ -127,7 +127,7 @@ export default function Template() {
             />
           </CardContent>
         </Card>
-      </div>
+      </Stack>
     </DemoShell>
   );
 }

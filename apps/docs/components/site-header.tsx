@@ -2,12 +2,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Button, Sheet, SheetContent, ThemeToggle } from "kora-ui";
+import { Badge, Button, Sheet, SheetContent, ThemeToggle } from "kora-ui";
 import { Menu } from "lucide-react";
-import { Logo } from "@/templates/logo";
+import { KoraMark } from "@/components/kora-mark";
 import { DocsNav } from "./docs-nav";
 
-const links = [
+const links: { href: string; label: string; pro?: boolean }[] = [
   { href: "/docs", label: "Get started" },
   { href: "/components", label: "Components" },
   { href: "/templates", label: "Templates" },
@@ -24,7 +24,7 @@ export function SiteHeader() {
           <Menu aria-hidden />
         </Button>
         <Link href="/" className="mr-5 flex items-center gap-2 rounded-sm px-1 text-sm font-semibold">
-          <Logo />
+          <KoraMark />
           kora-ui
         </Link>
         <nav aria-label="Main" className="hidden items-center gap-1 md:flex">
@@ -33,9 +33,10 @@ export function SiteHeader() {
               key={l.href}
               href={l.href}
               aria-current={pathname.startsWith(l.href) ? "page" : undefined}
-              className="rounded-md px-3 py-2 text-sm text-[var(--kora-muted)] hover:text-[var(--kora-fg)] aria-[current=page]:font-medium aria-[current=page]:text-[var(--kora-fg)]"
+              className="inline-flex items-center rounded-md px-3 py-2 text-sm text-[var(--kora-muted)] hover:text-[var(--kora-fg)] aria-[current=page]:font-medium aria-[current=page]:text-[var(--kora-fg)]"
             >
               {l.label}
+              {l.pro && <Badge tone="accent" className="ml-1.5">Pro</Badge>}
             </Link>
           ))}
         </nav>
@@ -51,6 +52,7 @@ export function SiteHeader() {
             </a>
           </Button>
           <ThemeToggle />
+          <Button asChild variant="secondary" size="sm" className="ml-1"><Link href="/account">Account</Link></Button>
         </div>
       </div>
       <Sheet open={open} onOpenChange={setOpen}>
@@ -58,7 +60,7 @@ export function SiteHeader() {
           <div className="grid gap-5" onClick={(e) => (e.target as HTMLElement).closest("a") && setOpen(false)}>
             <nav aria-label="Mobile" className="grid">
               {links.map((l) => (
-                <Link key={l.href} href={l.href} className="flex h-11 items-center text-sm font-medium">{l.label}</Link>
+                <Link key={l.href} href={l.href} className="flex h-11 items-center gap-1.5 text-sm font-medium">{l.label}{l.pro && <Badge tone="accent">Pro</Badge>}</Link>
               ))}
             </nav>
             {pathname.startsWith("/components") && <DocsNav />}

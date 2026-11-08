@@ -1,7 +1,8 @@
 import { Fragment, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { Dialog as D, Popover } from "radix-ui";
-import { Bell, Check, ChevronsUpDown, Moon, Search, Sun } from "lucide-react";
+import { DropdownMenu as M } from "radix-ui";
+import { Bell, Check, ChevronsUpDown, Monitor, Moon, Search, Sun } from "lucide-react";
 import { Button, focusRing, popoverClass } from "./button";
 import { Avatar } from "./display";
 import { Input } from "./form";
@@ -10,13 +11,22 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { cn, KoraLink, useLabels } from "./provider";
 
 const THEME_KEY = "kora-theme";
+const TEXT_KEY = "kora-text-size";
 
-/** Add to an inline script in the document head, so the saved theme applies before the first paint. */
-export const themeScript = `(function(){try{var t=localStorage.getItem("${THEME_KEY}");var d=t?t==="dark":matchMedia("(prefers-color-scheme: dark)").matches;document.documentElement.classList.toggle("dark",d)}catch(e){}})()`;
+/** The inline script for the document head: applies the saved theme and text size before the first paint.
+ * `defaultTheme` is used until the person picks one. */
+export function makeThemeScript(defaultTheme: "light" | "dark" | "system" = "system") {
+  const fallback = defaultTheme === "system" ? 'matchMedia("(prefers-color-scheme: dark)").matches' : String(defaultTheme === "dark");
+  return `(function(){try{var r=document.documentElement,t=localStorage.getItem("${THEME_KEY}"),s=localStorage.getItem("${TEXT_KEY}");var d=t?t==="dark":${fallback};r.classList.toggle("dark",d);if(s)r.style.fontSize=s+"%"}catch(e){}})()`;
+}
 
-/** Put it in the document head, so the saved theme applies before the first paint. Works in a server layout. */
-export function ThemeScript() {
-  return <script dangerouslySetInnerHTML={{ __html: themeScript }} />;
+/** Add to an inline script in the document head, so the saved theme and text size apply before the first paint. */
+export const themeScript = makeThemeScript();
+
+/** Put it in the document head, so the saved theme applies before the first paint. Works in a server layout.
+ * `defaultTheme` is used until the person picks one. Default system. */
+export function ThemeScript({ defaultTheme = "system" }: { defaultTheme?: "light" | "dark" | "system" }) {
+  return <script dangerouslySetInnerHTML={{ __html: makeThemeScript(defaultTheme) }} />;
 }
 
 /** Switches the `.dark` class on the page and saves the choice. */
@@ -41,6 +51,66 @@ export function ThemeToggle({ className }: { className?: string }) {
   );
 }
 
+/** Percent of the browser size, shown as the pixels of body text. */
+const textSizes = [87.5, 100, 112.5, 125] as const;
+
+/** Theme and text size of this person, on this device. A size chosen here wins over the one of the site, set with ThemeColors. */
+function DisplayPreferences() {
+  const t = useLabels();
+  const root = document.documentElement;
+  const saved = (key: string) => {
+    try {
+      return localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  };
+  const save = (key: string, value: string | null) => {
+    try {
+      if (value === null) localStorage.removeItem(key);
+      else localStorage.setItem(key, value);
+    } catch {}
+  };
+  const [theme, setTheme] = useState(() => saved(THEME_KEY) ?? "system");
+  // Without a choice, the size shown is the one the site uses now.
+  const [size, setSize] = useState(() => String(saved(TEXT_KEY) ?? Math.round((parseFloat(getComputedStyle(root).fontSize) / 16) * 1000) / 10));
+
+  const chooseTheme = (value: string) => {
+    setTheme(value);
+    save(THEME_KEY, value === "system" ? null : value);
+    root.classList.toggle("dark", value === "system" ? matchMedia("(prefers-color-scheme: dark)").matches : value === "dark");
+  };
+  const chooseSize = (value: string) => {
+    setSize(value);
+    save(TEXT_KEY, value);
+    root.style.fontSize = `${value}%`;
+  };
+  const chip = "kr:flex kr:min-h-10 kr:flex-1 kr:cursor-pointer kr:items-center kr:justify-center kr:gap-1.5 kr:whitespace-nowrap kr:rounded-sm kr:px-1.5 kr:text-sm kr:outline-none kr:select-none kr:md:min-h-8 kr:[&_svg]:size-4 kr:data-[highlighted]:bg-surface-2 kr:data-[state=checked]:bg-accent-soft kr:data-[state=checked]:font-medium";
+  const group = (label: string, value: string, onChange: (value: string) => void, options: Array<{ value: string; label: string; icon?: ReactNode }>) => (
+    <M.Group>
+      <DropdownMenuLabel>{label}</DropdownMenuLabel>
+      <M.RadioGroup value={value} onValueChange={onChange} className="kr:flex kr:gap-1 kr:px-1 kr:pb-1">
+        {options.map((option) => (
+          <M.RadioItem key={option.value} value={option.value} className={chip} aria-label={option.label} title={option.label} onSelect={(event) => event.preventDefault()}>
+            {option.icon ?? <span aria-hidden>{option.label.replace(" px", "")}</span>}
+          </M.RadioItem>
+        ))}
+      </M.RadioGroup>
+    </M.Group>
+  );
+  return (
+    <>
+      {group(t.theme, theme, chooseTheme, [
+        { value: "light", label: t.themeLight, icon: <Sun aria-hidden /> },
+        { value: "dark", label: t.themeDark, icon: <Moon aria-hidden /> },
+        { value: "system", label: t.themeSystem, icon: <Monitor aria-hidden /> },
+      ])}
+      {group(t.textSize, size, chooseSize, textSizes.map((value) => ({ value: String(value), label: `${(value * 16) / 100} px` })))}
+      <DropdownMenuSeparator />
+    </>
+  );
+}
+
 export type CommandItem = {
   id: string;
   label: string;
@@ -48,6 +118,8 @@ export type CommandItem = {
   icon?: ReactNode;
   /** Extra words to match, such as "billing" for an Invoices page. */
   keywords?: string;
+  /** Muted text at the end of the row, such as the customer of an order. */
+  description?: ReactNode;
   /** Links through the router set on KoraProvider. */
   href?: string;
   onSelect?: () => void;
@@ -59,7 +131,13 @@ export function filterCommands(items: CommandItem[], query: string) {
 }
 
 /** Search for pages and actions. Opens with its button, or with Cmd+K or Ctrl+K. */
-export function CommandPalette({ items, placeholder, className }: { items: CommandItem[]; placeholder?: string; className?: string }) {
+export function CommandPalette({ items, placeholder, onQueryChange, className }: {
+  items: CommandItem[];
+  placeholder?: string;
+  /** Called with each change of the text, and with "" on close. Use it to fetch results from your server and pass them in `items`. */
+  onQueryChange?: (query: string) => void;
+  className?: string;
+}) {
   const t = useLabels();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -94,7 +172,10 @@ export function CommandPalette({ items, placeholder, className }: { items: Comma
 
   const change = (next: boolean) => {
     setOpen(next);
-    if (!next) setQuery("");
+    if (!next) {
+      setQuery("");
+      onQueryChange?.("");
+    }
   };
   const optionClass = (selected: boolean) =>
     cn(
@@ -104,7 +185,7 @@ export function CommandPalette({ items, placeholder, className }: { items: Comma
 
   return (
     <>
-      <Button variant="secondary" onClick={() => setOpen(true)} className={cn("kr:px-2.5 kr:font-normal kr:text-muted", className)}>
+      <Button variant="secondary" onClick={() => setOpen(true)} className={cn("kr:px-2.5 kr:font-normal kr:text-muted kr:max-md:border-transparent kr:max-md:bg-transparent kr:max-md:shadow-none", className)}>
         <Search aria-hidden />
         <span className="kr:sr-only kr:md:not-sr-only">{t.search}</span>
         <kbd aria-hidden className="kr:hidden kr:rounded-sm kr:border kr:border-line kr:px-1 kr:font-sans kr:text-xs kr:md:inline">{shortcut}</kbd>
@@ -122,7 +203,10 @@ export function CommandPalette({ items, placeholder, className }: { items: Comma
               aria-activedescendant={ordered[active] ? `${listId}-${ordered[active]!.id}` : undefined}
               placeholder={placeholder ?? t.commandPlaceholder}
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                onQueryChange?.(e.target.value);
+              }}
               onKeyDown={(e) => {
                 if (e.key === "ArrowDown") {
                   e.preventDefault();
@@ -154,10 +238,17 @@ export function CommandPalette({ items, placeholder, className }: { items: Comma
                         change(false);
                       },
                     };
+                    const content = (
+                      <>
+                        {item.icon}
+                        <span className="kr:min-w-0 kr:truncate">{item.label}</span>
+                        {item.description && <span className="kr:ml-auto kr:min-w-0 kr:shrink kr:truncate kr:pl-3 kr:text-xs kr:text-muted">{item.description}</span>}
+                      </>
+                    );
                     return item.href ? (
-                      <KoraLink key={item.id} href={item.href} {...shared}>{item.icon}{item.label}</KoraLink>
+                      <KoraLink key={item.id} href={item.href} {...shared}>{content}</KoraLink>
                     ) : (
-                      <button key={item.id} type="button" {...shared}>{item.icon}{item.label}</button>
+                      <button key={item.id} type="button" {...shared}>{content}</button>
                     );
                   })}
                 </div>
@@ -210,7 +301,7 @@ export function NotificationsMenu({ items, onMarkAllRead, onSelect, className }:
                 <>
                   <span aria-hidden className={cn("kr:mt-1.5 kr:size-2 kr:shrink-0 kr:rounded-full", item.unread ? "kr:bg-accent" : "kr:bg-transparent")} />
                   <span className="kr:min-w-0 kr:flex-1">
-                    <span className={cn("kr:block kr:text-sm", item.unread && "kr:font-medium")}>{item.title}</span>
+                    <span className="kr:block kr:text-sm">{item.title}</span>
                     {item.description && <span className="kr:block kr:text-[0.8125rem] kr:text-muted">{item.description}</span>}
                     {item.time && <span className="kr:mt-0.5 kr:block kr:text-xs kr:text-muted">{item.time}</span>}
                   </span>
@@ -265,6 +356,40 @@ export function SidebarUser({ name, email, avatar, children }: { name: string; e
   );
 }
 
+/** The avatar of the signed-in person, for the Topbar. Touching it opens a menu. Put DropdownMenuItem in `children`. */
+export function UserMenu({ name, email, avatar, seed, preferences = true, children, className }: {
+  name: string;
+  email?: string;
+  /** A photo. */
+  avatar?: string;
+  /** Usually the id of the person. With no photo, it draws a generated avatar in place of the initials. */
+  seed?: string;
+  /** Theme and text size, saved on this device. On by default. */
+  preferences?: boolean;
+  children: ReactNode;
+  className?: string;
+}) {
+  const t = useLabels();
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        aria-label={`${t.accountMenu}: ${name}`}
+        className={cn("kr:flex kr:size-11 kr:shrink-0 kr:cursor-pointer kr:items-center kr:justify-center kr:rounded-md kr:hover:bg-surface-2 kr:md:size-9", focusRing, className)}
+      >
+        <span aria-hidden className="kr:flex"><Avatar name={name} src={avatar} seed={seed} size={28} /></span>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className={preferences ? "kr:w-64" : undefined}>
+        <div className={cn("kr:border-b kr:border-line kr:px-2.5 kr:pt-1.5 kr:pb-2 kr:mb-1", !preferences && "kr:max-w-64")}>
+          <p className="kr:truncate kr:text-sm kr:font-medium kr:text-fg">{name}</p>
+          {email && <p className="kr:truncate kr:text-xs kr:text-muted">{email}</p>}
+        </div>
+        {preferences && <DisplayPreferences />}
+        {children}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 export type ScopeOption = {
   value: string;
   label: string;
@@ -286,10 +411,10 @@ export function ScopeSwitcher({ label, options, value, onChange }: { label: stri
       >
         <span className="kr:sr-only">{`${t.switchScope} ${label}: `}{rail && current?.label}</span>
         {rail ? (
-          <span aria-hidden>{current?.logo ?? <span className="kr:text-xs kr:font-medium">{current?.label[0]?.toUpperCase()}</span>}</span>
+          <span aria-hidden className="kr:flex kr:[&_svg]:size-4">{current?.logo ?? <span className="kr:text-xs kr:font-medium">{current?.label[0]?.toUpperCase()}</span>}</span>
         ) : (
           <>
-            {current?.logo && <span aria-hidden className="kr:flex">{current.logo}</span>}
+            {current?.logo && <span aria-hidden className="kr:flex kr:[&_svg]:size-4">{current.logo}</span>}
             <span className="kr:min-w-0 kr:flex-1 kr:truncate kr:font-medium">{current?.label}</span>
             <ChevronsUpDown aria-hidden className="kr:size-4 kr:shrink-0 kr:text-muted" />
           </>
@@ -301,7 +426,7 @@ export function ScopeSwitcher({ label, options, value, onChange }: { label: stri
             {o.group !== options[i - 1]?.group && i > 0 && <DropdownMenuSeparator className="kr:my-1.5" />}
             {o.group && o.group !== options[i - 1]?.group && <DropdownMenuLabel className="kr:block">{o.group}</DropdownMenuLabel>}
             <DropdownMenuItem className="kr:gap-2.5 kr:py-2 kr:not-first:mt-0.5" onSelect={() => onChange(o.value)}>
-              {o.logo && <span aria-hidden className="kr:flex">{o.logo}</span>}
+              {o.logo && <span aria-hidden className="kr:flex kr:[&_svg]:size-4">{o.logo}</span>}
               <span className="kr:min-w-0 kr:flex-1">
                 <span className="kr:block kr:truncate kr:leading-5">{o.label}</span>
                 {o.description && <span className="kr:mt-0.5 kr:block kr:truncate kr:text-xs kr:leading-4 kr:text-muted">{o.description}</span>}

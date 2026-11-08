@@ -37,6 +37,7 @@
     "./auth": { "types": "./dist/auth.d.ts", "import": "./dist/auth.js" },
     "./screens": { "types": "./dist/screens.d.ts", "import": "./dist/screens.js" },
     "./styles.css": "./dist/styles.css",
+    "./styles-layer.css": "./dist/styles-layer.css",
     "./package.json": "./package.json"
   },
   "files": ["dist", "README.md", "LICENSE"],
@@ -44,8 +45,9 @@
   "engines": { "node": ">=20" },
   "scripts": {
     "build": "tsup && npm run build:css",
-    "build:css": "tailwindcss -i src/styles/index.css -o dist/styles.css --minify",
-    "dev": "tsup --watch",
+    "build:css": "tailwindcss -i src/styles/index.css -o dist/styles.css --minify && cp src/styles/layer.css dist/styles-layer.css",
+    "dev": "tsup --watch src --onSuccess \"npm run dev:sync\"",
+    "dev:sync": "npm run build:css && node ../../scripts/sync-consumers.mjs",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "npm run typecheck && npm test && npm run build"
@@ -57,7 +59,9 @@
   "dependencies": {
     "@daypicker/react": "^10.0.2",
     "@tanstack/react-table": "^9.3.1",
+    "jsqr": "^1.4.0",
     "lucide-react": "^1.69.0",
+    "qrcode-generator": "^2.0.4",
     "radix-ui": "^1.8.1",
     "recharts": "^3.10.1",
     "sonner": "^2.0.8"

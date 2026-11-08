@@ -14,7 +14,7 @@ export const generateStaticParams = () => allComponents.map((c) => ({ slug: c.sl
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const doc = allComponents.find((c) => c.slug === slug);
-  return { title: doc?.name, description: doc?.description };
+  return { title: doc?.name, description: doc?.description, alternates: { canonical: `/components/${slug}` } };
 }
 
 export default async function ComponentPage({ params }: Props) {
@@ -25,7 +25,7 @@ export default async function ComponentPage({ params }: Props) {
   return (
     <main className="px-4 py-8 lg:px-10 lg:py-10">
       <h1 className="text-2xl font-semibold">{doc.name}</h1>
-      <p className="mt-2 max-w-2xl text-[var(--kora-muted)]">{doc.description}</p>
+      <p className="mt-2 max-w-2xl text-[var(--kora-muted)]">{doc.description}{doc.notes && ` ${doc.notes}`}</p>
       <div className="mt-4">
         <CodeBlock code={`import { ${names} } from "${doc.from}";`} />
       </div>

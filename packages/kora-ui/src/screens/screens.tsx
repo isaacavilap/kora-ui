@@ -8,7 +8,7 @@ import { fill, type Labels } from "../components/labels";
 import { PageHeader } from "../components/layout";
 import { Stepper, Tabs, TabsContent, TabsList, TabsTrigger } from "../components/navigation";
 import { Dialog, DialogContent, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, toast } from "../components/overlay";
-import { cn, KoraLink, useKora, useLabels, useSubmit, type Brand } from "../components/provider";
+import { BrandLogo, cn, KoraLink, useKora, useLabels, useSubmit, type Brand } from "../components/provider";
 import { DataTable, type DataTableColumn } from "../table/data-table";
 import { FilterBar } from "../table/filter-bar";
 import { isEmail } from "../auth/auth";
@@ -45,7 +45,7 @@ export function ErrorScreen({ variant, title, description, homeHref, onRetry, ac
       <div className="kr:mx-auto kr:w-full kr:max-w-md">
         {b && (
           <div className="kr:mb-8 kr:flex kr:items-center kr:gap-2 kr:text-sm kr:font-semibold">
-            {b.logo}
+            <BrandLogo logo={b.logo} />
             {b.name}
           </div>
         )}
@@ -503,7 +503,7 @@ export function OnboardingWizard({ steps, initialStep = 0, onStepChange, onCompl
       <div className="kr:mx-auto kr:w-full kr:max-w-2xl">
         {b && (
           <div className="kr:mb-6 kr:flex kr:items-center kr:gap-2 kr:text-sm kr:font-semibold">
-            {b.logo}
+            <BrandLogo logo={b.logo} />
             {b.name}
           </div>
         )}
