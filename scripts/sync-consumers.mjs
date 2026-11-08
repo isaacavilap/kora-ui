@@ -7,7 +7,7 @@ import path from "node:path";
 const root = path.resolve(import.meta.dirname, "..");
 const src = path.join(root, "packages/kora-ui/dist");
 // Apps that install kora-ui with "file:" (paths relative to this repo). Missing ones are skipped.
-const apps = ["../social", "../portal", "../web", "../istmobot/apps/web", "../../Lab/validator"];
+const apps = ["../social", "../portal", "../../Lab/validator"];
 
 const files = fs.readdirSync(src);
 for (const app of apps) {

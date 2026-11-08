@@ -300,7 +300,7 @@ kora-ui's own classes use the `kr:` prefix, so they never clash with yours.
 
 ## Versions
 
-kora-ui follows [semantic versioning](https://semver.org). Each release's changes are in the [changelog](https://github.com/isaacavilap/kora-ui/blob/main/packages/kora-ui/CHANGELOG.md).
+kora-ui follows [semantic versioning](https://semver.org). Each release's changes are on [GitHub Releases](https://github.com/isaacavilap/kora-ui/releases).
 
 | Change | Bump |
 |---|---|
